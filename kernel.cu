@@ -17,15 +17,15 @@ __global__ void test()
       cuPrintf("test");
 }
 
-void  __global__ gap(int level)
+int  __device__ gap(int level)
 {
-    cuPrintf("gap entered level %d\n",level);
+    //cuPrintf("gap entered level %d\n",level);
     int d2 = (int)pow(2, level);
     int g = (gridDim.x * blockDim.x) / d2;
-    cuPrintf("gap %d gridDim.x %d blockDim.x %d denom %d level %d\n",
-              g,   (int)gridDim.x,   (int)blockDim.x,d2,level);
+    //cuPrintf("gap %d gridDim.x %d blockDim.x %d denom %d level %d\n",
+      //        g,   (int)gridDim.x,   (int)blockDim.x,d2,level);
 
-    //return g;
+    return g;
 }
 
 unsigned int __device__ get_num_thread_to_compare(int level)
@@ -33,13 +33,13 @@ unsigned int __device__ get_num_thread_to_compare(int level)
    
     unsigned int n = blockIdx.x * blockDim.x + threadIdx.x;
 
-    //return gap(level) + n;
+    return gap(level) + n;
 }
 
 int __device__ active_thread(int level)
 {
     unsigned int n = blockIdx.x * blockDim.x + threadIdx.x;
-//    return (n < gap(level));
+    return (n < gap(level));
 }
 
 
@@ -61,7 +61,7 @@ void __global__ find(unsigned long long* d_v, int size, int* res)
         local_1st_nonzero,res_by_thread[n]);
     
 
-    //cuPrintf("reduction levels %d active %d gap %d \n",levels, active_thread(levels),gap(levels));
+    cuPrintf("reduction levels %d active %d gap %d \n",levels, active_thread(levels),gap(levels));
     return;
     for (int l = 1; l <= levels;l++)
     {
@@ -69,8 +69,8 @@ void __global__ find(unsigned long long* d_v, int size, int* res)
         if (active_thread(l))
         {
             unsigned int m = get_num_thread_to_compare(l);
-//            cuPrintf("level %d gap %u compare with %u res_by_thread[n] %d res_by_thread[m] %d \n",
-//                l,gap(l), m, res_by_thread[n], res_by_thread[m]);
+            cuPrintf("level %d gap %u compare with %u res_by_thread[n] %d res_by_thread[m] %d \n",
+                l,gap(l), m, res_by_thread[n], res_by_thread[m]);
             res_by_thread[n] = min(res_by_thread[n],
                                         res_by_thread[m]);
             cuPrintf("res_by_thread[n] %d res_by_thread[m] %d \n",
@@ -96,8 +96,8 @@ int main()
     cudaMalloc(&d_res, sizeof(int));
     cudaMemcpy(d_v, h_v, N * sizeof(unsigned long long), cudaMemcpyHostToDevice);
     cudaPrintfInit();
-    gap << <1, N >> > (2);
-    // find << <1, N >> > (d_v,N,d_res);
+//    gap << <1, N >> > (2);
+    find << <1, N >> > (d_v,N,d_res);
     cudaPrintfDisplay(stdout, true);
     cudaPrintfEnd();
     cudaMemcpy(&h_res, d_res, sizeof(int), cudaMemcpyDeviceToHost);
