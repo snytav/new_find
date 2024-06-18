@@ -51,7 +51,7 @@ void __global__ find(unsigned long long* d_v, int size, int* res)
     int local_1st_nonzero;
     unsigned int n = blockIdx.x * blockDim.x + threadIdx.x;
     local_1st_nonzero = __ffsll(d_v[n]);  // первая единица в слове
-    int levels = int(log((double)(N/2)) / log(2.0));
+    int levels = int(log((double)(N)) / log(2.0));
 
    
    
@@ -62,7 +62,7 @@ void __global__ find(unsigned long long* d_v, int size, int* res)
     
 
     cuPrintf("reduction levels %d active %d gap %d \n",levels, active_thread(levels),gap(levels));
-    return;
+    //return;
     for (int l = 1; l <= levels;l++)
     {
         cuPrintf("l in loop %d activ %d\n",l, active_thread(l));
@@ -80,7 +80,7 @@ void __global__ find(unsigned long long* d_v, int size, int* res)
     }
 
    
-//    *res = minp;
+    *res = res_by_thread[n];
     cuPrintf("global min %d\n",*res);
 }
 
