@@ -21,10 +21,9 @@ void  __global__ gap(int level)
 {
     cuPrintf("gap entered level %d\n",level);
     int d2 = (int)pow(2, level);
-    int g = (gridDim.x * blockDim.x) / d2 / level;
-   // cuPrintf("gap\n");
-    //cuPrintf("gap %d gridDim.x %d blockDim.x %d denom %d level %d\n",
-    //          gap,   (int)gridDim.x,   (int)blockDim.x,d2,level);
+    int g = (gridDim.x * blockDim.x) / d2;
+    cuPrintf("gap %d gridDim.x %d blockDim.x %d denom %d level %d\n",
+              g,   (int)gridDim.x,   (int)blockDim.x,d2,level);
 
     //return g;
 }
@@ -64,7 +63,7 @@ void __global__ find(unsigned long long* d_v, int size, int* res)
 
     //cuPrintf("reduction levels %d active %d gap %d \n",levels, active_thread(levels),gap(levels));
     return;
-    for (int l = levels; l >= 1; l--)
+    for (int l = 1; l <= levels;l++)
     {
         cuPrintf("l in loop %d activ %d\n",l, active_thread(l));
         if (active_thread(l))
@@ -97,7 +96,7 @@ int main()
     cudaMalloc(&d_res, sizeof(int));
     cudaMemcpy(d_v, h_v, N * sizeof(unsigned long long), cudaMemcpyHostToDevice);
     cudaPrintfInit();
-    gap << <1, N >> > (4);
+    gap << <1, N >> > (2);
     // find << <1, N >> > (d_v,N,d_res);
     cudaPrintfDisplay(stdout, true);
     cudaPrintfEnd();
