@@ -11,7 +11,7 @@
 #define SIZE_OF_LONG_INT 64
 
 //максимальная длина массива из длинных целых (для буферного массива я ядре find)
-#define N 4
+#define N 8
 __global__ void test()
 {
       cuPrintf("test");
@@ -88,7 +88,9 @@ void __global__ find(unsigned long long* d_v, int size, int* res)
 int main()
 {
     unsigned long long h_v[] = {0xABCDABCDABCD0000, 0x0F08000800080070,
-                                0xABCDABCDAB100000, 0x0F08000800080700};
+                                0xABCDABCDAB900000, 0x0F08000800080700,
+                                0xABCDABCDABC80000, 0x0F08000807000000,
+                                0xABCDABCDAB001000, 0x0F08000800080500 };
     unsigned long long* d_v;
     int *d_res,h_res;
 
