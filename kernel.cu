@@ -4,6 +4,8 @@
 #include "device_functions.h"
 
 #include <stdio.h>
+#include <time.h>
+#define MAX 999999
 
 #include "cuPrintf.cuh"
 #include "cuPrintf.cu"
@@ -11,7 +13,7 @@
 #define SIZE_OF_LONG_INT 64
 
 //максимальная длина массива из длинных целых (для буферного массива я ядре find)
-#define N 8
+#define N 1024
 __global__ void test()
 {
       cuPrintf("test");
@@ -87,13 +89,20 @@ void __global__ find(unsigned long long* d_v, int size, int* res)
 
 int main()
 {
-    unsigned long long h_v[] = {0xABCDABCDABCD0000, 0x0F08000800080070,
+    unsigned long long h_v[N];/* = {0xABCDABCDABCD0000, 0x0F08000800080070,
                                 0xABCDABCDAB900000, 0x0F08000800080700,
                                 0xABCDABCDABC80000, 0x0F08000807000000,
-                                0xABCDABCDAB001000, 0x0F08000800080500 };
+                                0xABCDABCDAB001000, 0x0F08000800080500 };*/
     unsigned long long* d_v;
     int *d_res,h_res;
 
+    for (int i = 0; i < N; i++)
+    {
+        h_v[i] = rand() % MAX + 1;
+        int sh = rand() % 32 + 1;
+        h_v[i] <<= sh;
+        printf("%d %30lx shift %d \n",i,h_v[i],sh);
+    }
     cudaMalloc(&d_v, N * sizeof(unsigned long long));
     cudaMalloc(&d_res, sizeof(int));
     cudaMemcpy(d_v, h_v, N * sizeof(unsigned long long), cudaMemcpyHostToDevice);
