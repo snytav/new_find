@@ -118,7 +118,7 @@ int main()
     cudaPrintfEnd();
     cudaMemcpy(&h_res, d_res, sizeof(int), cudaMemcpyDeviceToHost);
 
-
+    printf("%d \n",h_res);
 
 
     return 0;
