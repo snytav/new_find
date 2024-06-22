@@ -13,7 +13,7 @@
 #define SIZE_OF_LONG_INT 64
 
 //максимальная длина массива из длинных целых (для буферного массива я ядре find)
-#define N 1024
+#define N 8
 __global__ void test()
 {
       cuPrintf("test");
@@ -58,9 +58,14 @@ void __global__ find(unsigned long long* d_v, int size, int* res)
    
    
     //номер этой первой единицы глобальный (по всему массиву) начиная справа
-    res_by_thread[n] = local_1st_nonzero + SIZE_OF_LONG_INT * (size-n-1);
-    cuPrintf("n %d res by thread local %d global %d\n",n, 
-        local_1st_nonzero,res_by_thread[n]);
+
+    res_by_thread[n] = ((local_1st_nonzero >0) && (local_1st_nonzero != 0xFFFFFFFF))*
+                                    (local_1st_nonzero + SIZE_OF_LONG_INT * n) +
+                       (local_1st_nonzero == 0)*(N*SIZE_OF_LONG_INT);
+    cuPrintf("n %d res by thread local %d global %d SIZE_OF_LONG_INT * n %d\n", 
+        n,
+        local_1st_nonzero,res_by_thread[n],
+        SIZE_OF_LONG_INT * n);
     
 
     cuPrintf("reduction levels %d active %d gap %d \n",levels, active_thread(levels),gap(levels));
@@ -82,7 +87,7 @@ void __global__ find(unsigned long long* d_v, int size, int* res)
     }
 
    
-    *res = res_by_thread[n];
+    *res = res_by_thread[n]+1;
     cuPrintf("global min %d\n",*res);
 }
 
@@ -98,10 +103,10 @@ int main()
 
     for (int i = 0; i < N; i++)
     {
-        h_v[i] = rand() % MAX + 1;
+        h_v[i] = (i == 6) ? 2 : 0;//rand() % MAX + 1;
         int sh = rand() % 32 + 1;
-        h_v[i] <<= sh;
-        printf("%d %30lx shift %d \n",i,h_v[i],sh);
+        //h_v[i] <<= sh;
+        //printf("%d %30lx shift %d \n",i,h_v[i],sh);
     }
     cudaMalloc(&d_v, N * sizeof(unsigned long long));
     cudaMalloc(&d_res, sizeof(int));
