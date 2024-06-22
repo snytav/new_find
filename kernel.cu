@@ -89,7 +89,7 @@ void __global__ find(unsigned long long* d_v, int size, int* res)
 
 int main()
 {
-    unsigned long long h_v[N];/* = {0xABCDABCDABCD0000, 0x0F08000800080070,
+    unsigned long long h_v[N];/* = {0x00000000000000001, 0x0F08000800080070,
                                 0xABCDABCDAB900000, 0x0F08000800080700,
                                 0xABCDABCDABC80000, 0x0F08000807000000,
                                 0xABCDABCDAB001000, 0x0F08000800080500 };*/
@@ -98,11 +98,15 @@ int main()
 
     for (int i = 0; i < N; i++)
     {
-        h_v[i] = rand() % MAX + 1;
+
+    	h_v[i]=(i==0)?1:0;
+/*        h_v[i] = rand() % MAX + 1;
         int sh = rand() % 32 + 1;
         h_v[i] <<= sh;
         printf("%d %30lx shift %d \n",i,h_v[i],sh);
+        */
     }
+
     cudaMalloc(&d_v, N * sizeof(unsigned long long));
     cudaMalloc(&d_res, sizeof(int));
     cudaMemcpy(d_v, h_v, N * sizeof(unsigned long long), cudaMemcpyHostToDevice);
@@ -113,7 +117,7 @@ int main()
     cudaPrintfEnd();
     cudaMemcpy(&h_res, d_res, sizeof(int), cudaMemcpyDeviceToHost);
 
-
+printf("FND=%i ", h_res);
 
 
     return 0;
