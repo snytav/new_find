@@ -79,6 +79,45 @@ void __global__ find(unsigned long long* d_v, int size, int* res)
     cuPrintf("global min %d\n",*res);
     }
 }
+
+void __global__ find_simple(unsigned long long* d_v, unsigned int length, int* res)
+{
+    __shared__ unsigned int res_by_thread[N];
+    unsigned int local_1st_nonzero;
+    unsigned int n = blockIdx.x * blockDim.x + threadIdx.x;
+
+    local_1st_nonzero = __ffsll(d_v[n]);  // первая единица в слове
+    unsigned int active_threads=gridDim.x * blockDim.x<<1;
+    //номер этой первой единицы глобальный (по всему массиву) начиная справа
+     res_by_thread[n]=(local_1st_nonzero!=0)?(local_1st_nonzero+n*SIZE_OF_LONG_INT): (SIZE_OF_LONG_INT*N+1);
+
+   while(active_threads>0)
+    {
+        __syncthreads();
+        if (n < active_threads)
+        {
+            res_by_thread[n] = min(res_by_thread[n], res_by_thread[active_threads+n]);
+        }
+        active_threads=active_threads<<1;
+    }
+    if (n==0)
+    {
+    	*res = res_by_thread[0];
+        if (*res>length) *res = 0;
+    }
+}
+
+/* В дальнейшем метод класса Slice
+ * внутри функции доступны
+ * unsigned int length - длина слайса в битах
+ * unsigned int N - длина слайса в 64-х разрядных целых
+ * unsigned int IT - количество элементов, обрабатываемых одним потоком (для N>1024)
+ */
+unsigned int FND(unsigned long long *d_v)
+{
+	// вычислить число конфигурацию для find_simple
+}
+
 int main()
 {
     unsigned long long h_v[N];/* = {0xABCDABCDABCD0000, 0x0F08000800080070,
@@ -89,7 +128,7 @@ int main()
     int *d_res,h_res;
     for (int i = 0; i < N; i++)
     {
-        h_v[i] = (i == (N-1)) ? 0x8000000000000000 : 0;//rand() % MAX + 1;
+        h_v[i] = (i == (2)) ? 0x8000000000000000 : 0;//rand() % MAX + 1;
         int sh = rand() % 32 + 1;
         //h_v[i] <<= sh;
         //printf("%d %30lx shift %d \n",i,h_v[i],sh);
@@ -106,7 +145,7 @@ int main()
 
 
     printf("%d \n",h_res);
-
-
+    find_simple << <1, N >> > (d_v,64*N,1,d_res);
+    printf("Simple FND %d \n",h_res);
     return 0;
 }
