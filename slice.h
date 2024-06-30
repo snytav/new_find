@@ -14,7 +14,7 @@ public:
     unsigned int length, NN, blocks,IT;
 // методы
    LongPointer get_device_pointer(){return d_v;}
-   unsigned int get_block_count(){return blocks;}
+//  unsigned int get_block_count(){return blocks;}
    Slice(unsigned int k);
 
    void ASSIGN(Slice *X);
@@ -29,4 +29,10 @@ public:
    unsigned int NUMB();
    bool ZERO();
    bool SOME();
+
+   unsigned long long int ToDigit();
+   void FromDigit(unsigned long long dig);
+
+   void print(char *label);
+   void fprint(char *label);
 };

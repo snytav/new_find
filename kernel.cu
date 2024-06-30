@@ -111,9 +111,6 @@ void __global__ numb_kernel(LongPointer d_v, unsigned int length,unsigned int N1
     unsigned int n = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int active_threads=gridDim.x * blockDim.x;
 
-    unsigned long long int tail;
-
-
     // res_by_thread[n] для it элементов:
     tmp=0;
     for(int i=n*it;i<(n+1)*it;i++)

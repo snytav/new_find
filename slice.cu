@@ -128,3 +128,73 @@
   	cudaMemcpy(&h_res, d_res, sizeof(int), cudaMemcpyDeviceToHost);
   	return h_res==1;
   }
+
+ void __global__ digit_kernel(unsigned long long *w, unsigned long long *dig)
+ {
+ 	dig[0]=__brevll(w[0]);
+ //	dig[0]=w[0];
+ }
+
+ unsigned long long int Slice::ToDigit()
+ { unsigned long long *d_dig1,res=0;
+ 	if (NN==1)
+ 	{  cudaMalloc(&d_dig1,sizeof(unsigned long long));
+ 		digit_kernel<<<1,1>>>(d_v,d_dig1);
+ 		cudaMemcpy(&res,d_dig1,sizeof(unsigned long long),cudaMemcpyDeviceToHost);
+ 		res>>=(64-length);
+ 	}
+ 	return res;
+ }
+ void Slice::FromDigit(unsigned long long dig)
+ {	 unsigned long long *d_dig1;
+ 		if (NN==1)
+ 		{   dig<<=(64-length);
+ 			cudaMalloc(&d_dig1,sizeof(unsigned long long));
+ 			cudaMemcpy(d_dig1,&dig,sizeof(unsigned long long),cudaMemcpyHostToDevice);
+ 			digit_kernel<<<1,1>>>(d_dig1,d_v);
+ 		}
+ }
+
+
+ void __global__ print_kernel(LongPointer d_v, char* d_str, unsigned int length,unsigned int N1,unsigned int it)
+ {
+	 unsigned long long int tmp,one=1;
+	 unsigned int index=(blockIdx.x*blockDim.x+threadIdx.x)*it;
+	 for(int i=0; i<it;i++)
+		if (index+i<N1)
+		{
+			tmp=d_v[index+i];
+			for (int j=0;j< SIZE_OF_LONG_INT;j++)
+			{
+				d_str[(index+i)*SIZE_OF_LONG_INT+j] =(tmp&one)?'1':'0';
+				tmp=tmp>>1;
+				if(((index+i)*SIZE_OF_LONG_INT+j)==length) d_str[length]=0;
+			}
+		}
+ }
+
+ void Slice::print(char *label)
+ { char *d_str, *str;
+ 	 cudaMalloc(&d_str,NN*SIZE_OF_LONG_INT*sizeof(char));
+ 	 str=new char[NN*SIZE_OF_LONG_INT];
+ 	 print_kernel<<<blocks,1>>>(d_v,d_str,length,NN,IT);
+ 	cudaMemcpy(str,d_str,NN*SIZE_OF_LONG_INT*sizeof(char),cudaMemcpyDeviceToHost);
+ 	printf("%s \n%s\n",label,str);
+
+ }
+
+ void Slice::fprint(char *label)
+  { char *d_str, *str;
+  	 cudaMalloc(&d_str,NN*SIZE_OF_LONG_INT*sizeof(char));
+  	 str=new char[NN*SIZE_OF_LONG_INT];
+  	 print_kernel<<<blocks,1>>>(d_v,d_str,length,NN,IT);
+  	cudaMemcpy(str,d_str,NN*SIZE_OF_LONG_INT*sizeof(char),cudaMemcpyDeviceToHost);
+
+  	FILE * pFile;
+  	char fname[30]{0};
+  	strcat(fname,label);
+  	strcat(fname,".dat");
+  	pFile = fopen (fname,"w");
+  	fprintf(pFile,"%s (%d)\n%s\n",label,length,str);
+  	fclose (pFile);
+  }
