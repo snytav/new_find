@@ -12,6 +12,8 @@ typedef unsigned long long int *LongPointer;
 * <<<1,threads>>>, где threads вычисляется в соответствующей процедуре класса Slice
 * 		threads = min(MAX_THREADS,N1);
 * 		it=(N1-1)/threads+1;
+*
+* 		перед ними нужно вызвать tail_kernel<<<1,1>>>(d_v,length,N1)
 */
 void __global__ find_kernel(LongPointer d_v, unsigned int length,unsigned int N1,unsigned int it, int* res);
 void __global__ some_kernel(LongPointer d_v,unsigned int N1,unsigned int it, int*res);
@@ -20,6 +22,8 @@ void __global__ numb_kernel(LongPointer d_v, unsigned int length,unsigned int N1
 
 //shiftup(k), shiftdown(k)
 //getbit(k) и setbit(k,bit)
+void __global__ tail_kernel(LongPointer d_v, unsigned int length,unsigned int N1);
+
 
 /*
  * некритичные к синхронизации, параметры блока вычисляются в соответствующей процедуре класса Slice

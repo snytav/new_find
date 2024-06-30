@@ -23,7 +23,7 @@ unsigned int FND(unsigned long long *d_v)
 	   it=(N1-1)/threads+1;
 	   printf("N=%d threads=%d,IT=%d \n",N1,threads,it);
 	}
-	numb_kernel<<<1,threads>>>(d_v,N*64,N1,it,d_res);
+	numb_kernel<<<1,threads>>>(d_v,N*64-32,N1,it,d_res);
 	cudaMemcpy(&h_res, d_res, sizeof(int), cudaMemcpyDeviceToHost);
 	printf("NUMB=%d\n",h_res);
 
@@ -45,7 +45,7 @@ int main()
 
     for (int i = 0; i < N; i++)
     {
-        h_v[i] = (i >0) ? 0x8000000000000000 : 0;//rand() % MAX + 1;
+        h_v[i] = (i >0) ? 0x8000000000000008 : 0;//rand() % MAX + 1;
         int sh = rand() % 32 + 1;
         //h_v[i] <<= sh;
         //printf("%d %30lx shift %d \n",i,h_v[i],sh);
