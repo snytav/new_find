@@ -24,11 +24,19 @@ public:
    void NOT();
    void SET();
    void CLR();
+   void MASK(int i);
 
    unsigned int FND();
+   unsigned int STEP();
    unsigned int NUMB();
    bool ZERO();
    bool SOME();
+
+   void shift_up(int i,Slice *s);
+   void shift_down(int i,Slice *s);
+
+   void setbit(unsigned int n, int bit);
+   int getbit(unsigned int n);
 
    unsigned long long int ToDigit();
    void FromDigit(unsigned long long dig);

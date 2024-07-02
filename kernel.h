@@ -22,6 +22,9 @@ void __global__ numb_kernel(LongPointer d_v, unsigned int length,unsigned int N1
 
 //shiftup(k), shiftdown(k)
 //getbit(k) и setbit(k,bit)
+void __global__ setbit_kernel(LongPointer d_v, unsigned int n, int bit);
+void __global__ getbit_kernel(LongPointer d_v, unsigned int n,int *d_res);
+
 void __global__ tail_kernel(LongPointer d_v, unsigned int length,unsigned int N1);
 
 
@@ -59,3 +62,12 @@ __device__ void _xor(LongPointer d_v, LongPointer d_v1, unsigned int NN,
 unsigned int IT=1);
 __global__ void xor_kernel(LongPointer d_v, LongPointer d_v1, unsigned int NN,
 unsigned int IT=1);
+__device__ void _mask( LongPointer d_v1,int i, unsigned int NN,
+unsigned int IT=1);
+__global__ void mask_kernel(LongPointer d_v1, int i,unsigned int NN,
+unsigned int IT=1);
+
+__global__ void  shiftup_kernel(LongPointer d_v, LongPointer d_v_in,int i,unsigned int NN,
+		unsigned int IT=1);
+__global__ void  shiftdown_kernel(LongPointer d_v, LongPointer d_v_in,int i,unsigned int NN,
+		unsigned int IT=1);

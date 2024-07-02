@@ -72,6 +72,26 @@
  	return h_res;
  }
 
+ unsigned int Slice::STEP()
+ {
+ 	// вычислить конфигурацию
+ 	unsigned int threads,it;
+ 	int *d_res,h_res;
+ 	cudaMalloc(&d_res, sizeof(int));
+
+ 	{
+ 	   threads = min(MAX_THREADS,NN);
+ 	   it=(NN-1)/threads+1;
+ //	   printf("N=%d threads=%d,IT=%d \n",NN,threads,it);
+ 	}
+
+ 	find_kernel<<<1,threads>>>(d_v,length,NN,it,d_res);
+ 	cudaMemcpy(&h_res, d_res, sizeof(int), cudaMemcpyDeviceToHost);
+
+ 	setbit(h_res,0);
+ 	return h_res;
+ }
+
  unsigned int Slice::NUMB()
  {
  	// вычислить конфигурацию
@@ -180,7 +200,7 @@
  	 print_kernel<<<blocks,1>>>(d_v,d_str,length,NN,IT);
  	cudaMemcpy(str,d_str,NN*SIZE_OF_LONG_INT*sizeof(char),cudaMemcpyDeviceToHost);
  	printf("%s \n%s\n",label,str);
-
+ 	cudaFree(d_str);
  }
 
  void Slice::fprint(char *label)
@@ -197,4 +217,42 @@
   	pFile = fopen (fname,"w");
   	fprintf(pFile,"%s (%d)\n%s\n",label,length,str);
   	fclose (pFile);
+  	cudaFree(d_str);
   }
+
+ void Slice::setbit(unsigned int n, int bit)
+ {
+	 setbit_kernel<<<1,1>>>(d_v,n,bit);
+ }
+
+ int Slice::getbit(unsigned int n)
+  {
+	 int *d_res,h_res;
+	 cudaMalloc(&d_res, sizeof(int));
+
+ 	 getbit_kernel<<<1,1>>>(d_v,n,d_res);
+
+ 	 cudaMemcpy(&h_res, d_res, sizeof(int), cudaMemcpyDeviceToHost);
+ 	 return h_res;
+  }
+
+ void Slice::MASK(int i)
+ {
+ 	mask_kernel<<<blocks,1>>>(d_v,i,NN,IT);
+ }
+
+ void Slice::shift_up(int i,Slice *s)
+ {
+ 	unsigned long long int *d_v_in;
+
+	// вычислить конфигурацию
+ 	unsigned int threads,it;
+ 	   threads = min(MAX_THREADS,NN);
+ 	   it=(NN-1)/threads+1;
+ //	   printf("N=%d threads=%d,IT=%d \n",NN,threads,it);
+
+ 	d_v_in= s->get_device_pointer();
+	tail_kernel<<<1,1>>>(d_v_in,length,NN);
+	tail_kernel<<<1,1>>>(d_v,length,NN);
+ 	shiftup_kernel<<<1,threads>>>(d_v,d_v_in,i,NN,it);
+ }

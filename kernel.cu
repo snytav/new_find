@@ -211,3 +211,91 @@ unsigned int it)
 
 __global__ void not_kernel(LongPointer d_v, unsigned int NN,
 unsigned int IT){   _not(d_v,NN,IT);}
+
+
+__global__ void setbit_kernel(LongPointer d_v,unsigned int n, int bit)
+{// нумерация с 0, поэтому не добавляется
+	unsigned int n_el=(n-1)/SIZE_OF_LONG_INT;
+	unsigned int n_i=(n-1)%SIZE_OF_LONG_INT;
+
+	unsigned long long int tmp=1;
+	tmp=tmp<<n_i;
+
+	if (bit==1)
+		d_v[n_el]|=tmp;
+	else
+		d_v[n_el]&=~tmp;
+}
+
+void __global__ getbit_kernel(LongPointer d_v, unsigned int n,int *d_res)
+{ //нумерация с 0, поэтому не добавляется
+	unsigned int n_el=(n-1)/SIZE_OF_LONG_INT;
+	unsigned int n_i=(n-1)%SIZE_OF_LONG_INT;
+
+	unsigned long long int tmp=1;
+	tmp=tmp<<n_i;
+	tmp=tmp&d_v[n_el];
+	*d_res=(tmp==0)?0:1;
+//	printf("tmp=%lx bit=%d\n",tmp,*d_res);
+}
+
+__global__ void mask_kernel(LongPointer d_v,int num, unsigned int NN,
+unsigned int IT){   _mask(d_v,num,NN,IT);}
+
+__device__ void _mask(LongPointer d_v, int num,unsigned int NN,
+		unsigned int it)
+{ unsigned long long int zero=1;
+  int num_el=num>>6; // номер элемента, содержащий переход от 0 к 1;
+  int el=num % SIZE_OF_LONG_INT;
+//  printf("%i in %i \n", num,num_el);
+
+  unsigned int index=(blockIdx.x*blockDim.x+threadIdx.x)*it;
+  for(int i=0; i<it;i++)
+	  if((index+i)<NN)
+	  {
+		  if ((index+i)==num_el)
+		  {
+			  zero=(el==0)?0:(zero<<(el-1))-1;
+			  zero=~zero;
+		  }
+		  else
+		  {
+			  zero=0;
+			  if ((index+i)>num_el)
+			  {
+				  zero=~zero;
+			  }
+		  }
+		  d_v[index+i]=zero;
+	  }
+}
+
+void __global__ shiftup_kernel(LongPointer d_v, LongPointer d_v_in,int i,unsigned int NN,
+		unsigned int it)
+{
+	unsigned long long int teal, head;
+	int num_el=i>>6;//номер элемента в большем слайсе
+//int num_el1=(i+h)>>6;
+	int num_bit_first= i % SIZE_OF_LONG_INT ; // номер бита в элементе, который станет первым в маленьком слайсе
+//int num_bit_last = h % SIZE_OF_LONG_INT;
+//printf("num_els %i (%i) bits from %i  \n",blockIdx.x +num_el,gridDim.x,num_bit_first);
+	unsigned int index=(blockIdx.x*blockDim.x+threadIdx.x)*it;
+ for(int i=0; i<it;i++)
+ {
+	 head=d_v_in[index+num_el]>>(num_bit_first);
+	 if (index +num_el<NN)//?????????
+	 {
+	   teal = (index+1+num_el<NN)?(d_v_in[index+1+num_el]<<(SIZE_OF_LONG_INT-num_bit_first)):0;
+	   d_v[index]=head | teal;
+	 }
+	 else // обрезать последние биты от num_bit_last
+	 {
+//	   teal=(1<<num_bit_last) -1;
+	   d_v[index]=0;//head & teal;
+	 }
+	index++;
+ }
+}
+
+void __global__ shiftdown_kernel(LongPointer d_v, LongPointer d_v_in,int i,unsigned int NN,
+		unsigned int it){}

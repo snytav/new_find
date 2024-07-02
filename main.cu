@@ -8,7 +8,7 @@
 #include "cuPrintf.cu"
 
 #define MAX 999999
-#define N 100000
+#define N 2
 #define L  N*64-32
 
 unsigned int FND(unsigned long long *d_v)
@@ -63,11 +63,16 @@ int main()
     cudaPrintfDisplay(stdout, true);
     cudaPrintfEnd();
 */
-    Slice X(L);
-    X.fprint("X1");
+    Slice X(L),Y(L);
     X.SET();
-    X.fprint("X2");
-    printf("%d %d",X.length,X.NUMB());
+    int i=64;
+    X.MASK(i);
+    X.print("MASK");
+//    printf(" ZERO %d\n", X.ZERO());
+ //   printf("%d %d ZERO %d\n",i,X.STEP(), X.SOME()); // так нельзя, Х не успевает обновляться
+ //   printf("%d STEP=%d\n",i,X.STEP());
+    Y.shift_up(5,&X);
+    Y.print("shiftup");
     return 0;
 }
  
