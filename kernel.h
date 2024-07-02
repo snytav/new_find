@@ -71,3 +71,5 @@ __global__ void  shiftup_kernel(LongPointer d_v, LongPointer d_v_in,int i,unsign
 		unsigned int IT=1);
 __global__ void  shiftdown_kernel(LongPointer d_v, LongPointer d_v_in,int i,unsigned int NN,
 		unsigned int IT=1);
+void __global__ trim_kernel(LongPointer d_v, LongPointer d_v_in,int i,int h,unsigned int NN,
+		unsigned int IT=1);

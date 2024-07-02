@@ -280,22 +280,72 @@ void __global__ shiftup_kernel(LongPointer d_v, LongPointer d_v_in,int i,unsigne
 //int num_bit_last = h % SIZE_OF_LONG_INT;
 //printf("num_els %i (%i) bits from %i  \n",blockIdx.x +num_el,gridDim.x,num_bit_first);
 	unsigned int index=(blockIdx.x*blockDim.x+threadIdx.x)*it;
- for(int i=0; i<it;i++)
- {
-	 head=d_v_in[index+num_el]>>(num_bit_first);
-	 if (index +num_el<NN)//?????????
-	 {
-	   teal = (index+1+num_el<NN)?(d_v_in[index+1+num_el]<<(SIZE_OF_LONG_INT-num_bit_first)):0;
-	   d_v[index]=head | teal;
-	 }
-	 else // обрезать последние биты от num_bit_last
-	 {
+	for(int i=0; i<it;i++)
+	{
+		head=d_v_in[index+num_el]>>(num_bit_first);
+		if (index +num_el<NN)//?????????
+		{
+			teal = (index+1+num_el<NN)?(d_v_in[index+1+num_el]<<(SIZE_OF_LONG_INT-num_bit_first)):0;
+			d_v[index]=head | teal;
+		}
+		else // обрезать последние биты от num_bit_last
+		{
 //	   teal=(1<<num_bit_last) -1;
-	   d_v[index]=0;//head & teal;
-	 }
+			d_v[index]=0;//head & teal;
+		}
 	index++;
  }
 }
 
 void __global__ shiftdown_kernel(LongPointer d_v, LongPointer d_v_in,int i,unsigned int NN,
-		unsigned int it){}
+		unsigned int it)
+{
+	int num_el=i>>6;//номер элемента в большем слайсе
+	int num_bit_first= i % SIZE_OF_LONG_INT ;
+	unsigned long long int teal,head;
+	unsigned int index=(blockIdx.x*blockDim.x+threadIdx.x)*it;
+	for(int i=0; i<it;i++)
+	{
+		if (index >num_el)//?????????
+		{      head =d_v_in[index-num_el]<<(num_bit_first);
+			   teal =d_v_in[index-1-num_el]>>(SIZE_OF_LONG_INT-num_bit_first);
+			   d_v[index]=head | teal;
+		}
+		else // обрезать последние биты от num_bit_last
+		{
+			   d_v[index]=(index==num_el)? (d_v_in[0]<<(num_bit_first)):0;//head & teal;
+		}
+		index++;
+	}
+}
+
+void __global__ trim_kernel(LongPointer d_v, LongPointer d_v_in,int i,int h,unsigned int NN,
+		unsigned int it)
+{
+	int num_el=(i-1)>>6;//номер первого элемента в большем слайсе
+	int num_el1=(h-1)>>6; // номер последнего элемента в маленьком
+	int num_el2=(i+h-1)>>6;// номер последнего элемента в большом слайсе
+	int num_bit_first= i % SIZE_OF_LONG_INT -1; // номер бита в элементе, который станет первым в маленьком слайсе
+	int num_bit_last = h % SIZE_OF_LONG_INT;
+
+	unsigned long long int teal,head;
+	unsigned int index=(blockIdx.x*blockDim.x+threadIdx.x)*it;
+	for(int i=0; i<it;i++)
+	{
+		head =d_v_in[index+num_el]>>(num_bit_first);
+		if (index +num_el< num_el2)
+		{      head =d_v_in[index+num_el]>>(num_bit_first);
+			   teal =d_v_in[index+1+num_el]<<(SIZE_OF_LONG_INT-num_bit_first);
+			   d_v[index]=head | teal;
+		}
+		if (index==num_el1)
+		{
+			teal=1;
+			teal=(num_bit_last==0)? ~0:((teal<<num_bit_last)-1);
+				//	   long_to_binary(teal,prb,64);
+				//	   printf("\n teal_up (%i):",num_bit_last);printf(prb);
+			d_v[index]&=teal;
+		}
+		index++;
+	}
+}

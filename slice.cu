@@ -249,10 +249,36 @@
  	unsigned int threads,it;
  	   threads = min(MAX_THREADS,NN);
  	   it=(NN-1)/threads+1;
- //	   printf("N=%d threads=%d,IT=%d \n",NN,threads,it);
 
  	d_v_in= s->get_device_pointer();
 	tail_kernel<<<1,1>>>(d_v_in,length,NN);
-	tail_kernel<<<1,1>>>(d_v,length,NN);
  	shiftup_kernel<<<1,threads>>>(d_v,d_v_in,i,NN,it);
  }
+
+ void Slice::shift_down(int i,Slice *s)
+  {
+  	unsigned long long int *d_v_in;
+
+ 	// вычислить конфигурацию
+  	unsigned int threads,it;
+  	   threads = min(MAX_THREADS,NN);
+  	   it=(NN-1)/threads+1;
+
+  	d_v_in= s->get_device_pointer();
+ 	tail_kernel<<<1,1>>>(d_v_in,length,NN);
+  	shiftdown_kernel<<<1,threads>>>(d_v,d_v_in,i,NN,it);
+  }
+
+ void Slice::trim(int i,int h, Slice *s)
+  {
+  	unsigned long long int *d_v_in;
+
+ 	// вычислить конфигурацию
+  	unsigned int threads,it;
+  	   threads = min(MAX_THREADS,NN);
+  	   it=(NN-1)/threads+1;
+
+  	d_v_in= s->get_device_pointer();
+ 	tail_kernel<<<1,1>>>(d_v_in,length,NN);
+  	trim_kernel<<<1,threads>>>(d_v,d_v_in,i,h,NN,it);
+  }

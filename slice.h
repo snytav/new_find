@@ -34,6 +34,7 @@ public:
 
    void shift_up(int i,Slice *s);
    void shift_down(int i,Slice *s);
+   void trim(int i,int h,Slice *s);
 
    void setbit(unsigned int n, int bit);
    int getbit(unsigned int n);
