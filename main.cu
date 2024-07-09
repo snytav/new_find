@@ -3,13 +3,14 @@
 #include "device_functions.h"
 #include <stdio.h>
 #include <time.h>
-#include "slice.h"
+//#include "slice.h"
+#include "table.h"
 #include "cuPrintf.cuh"
 #include "cuPrintf.cu"
 
 #define MAX 999999
 #define N 2
-#define L  N*64-32
+#define L  N*64+32
 
 unsigned int FND(unsigned long long *d_v)
 {
@@ -63,16 +64,24 @@ int main()
     cudaPrintfDisplay(stdout, true);
     cudaPrintfEnd();
 */
-    Slice X(L),Y(L);
+    Slice X(2*L),Y(L);
+    Table T(2*L,L);
+ //   Y.SET();
+ //   Y.NOT();
     X.SET();
-    int i=64;
-    X.MASK(i);
-    X.print("MASK");
+    T.SetCol(&X,10);
+    T.SetCol(&X,70);
+    T.SetCol(&X,L-3);
+    int i=121;
+    T.GetRow(&Y,i);
+//    T.GetCol(&X,1);
+    Y.fprint("row_121");
+
 //    printf(" ZERO %d\n", X.ZERO());
  //   printf("%d %d ZERO %d\n",i,X.STEP(), X.SOME()); // так нельзя, Х не успевает обновляться
  //   printf("%d STEP=%d\n",i,X.STEP());
-    Y.shift_up(5,&X);
-    Y.print("shiftup");
+ //   Y.trim(15,L,&X);
+ //   Y.fprint("tream");
     return 0;
 }
  

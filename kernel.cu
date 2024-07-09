@@ -143,7 +143,7 @@ unsigned int it)
 }
 
 __global__ void and_kernel(LongPointer d_v, LongPointer d_v1, unsigned int NN,
-unsigned int IT){   _and(d_v,d_v1,NN,IT);}
+unsigned int IT=1){   _and(d_v,d_v1,NN,IT);}
 
 
 __device__ void _or(LongPointer d_v, LongPointer d_v1, unsigned int NN,
@@ -155,7 +155,7 @@ unsigned int it)
 }
 
 __global__ void or_kernel(LongPointer d_v, LongPointer d_v1, unsigned int NN,
-unsigned int IT){   _or(d_v,d_v1,NN,IT);}
+unsigned int IT=1){   _or(d_v,d_v1,NN,IT);}
 
 __device__ void _xor(LongPointer d_v, LongPointer d_v1, unsigned int NN,
 unsigned int it)
@@ -166,7 +166,7 @@ unsigned int it)
 }
 
 __global__ void xor_kernel(LongPointer d_v, LongPointer d_v1, unsigned int NN,
-unsigned int IT){   _xor(d_v,d_v1,NN,IT);}
+unsigned int IT=1){   _xor(d_v,d_v1,NN,IT);}
 
 __device__ void _assign(LongPointer d_v, LongPointer d_v1, unsigned int NN,
 unsigned int it)
@@ -177,7 +177,7 @@ unsigned int it)
 }
 
 __global__ void assign_kernel(LongPointer d_v, LongPointer d_v1, unsigned int NN,
-unsigned int IT){   _assign(d_v,d_v1,NN,IT);}
+unsigned int IT=1){   _assign(d_v,d_v1,NN,IT);}
 
 __device__ void _set(LongPointer d_v, unsigned int NN,
 unsigned int it)
@@ -188,7 +188,7 @@ unsigned int it)
 }
 
 __global__ void set_kernel(LongPointer d_v, unsigned int NN,
-unsigned int IT){   _set(d_v,NN,IT);}
+unsigned int IT=1){   _set(d_v,NN,IT);}
 
 __device__ void _clr(LongPointer d_v, unsigned int NN,
 unsigned int it)
@@ -199,7 +199,7 @@ unsigned int it)
 }
 
 __global__ void clr_kernel(LongPointer d_v, unsigned int NN,
-unsigned int IT){   _clr(d_v,NN,IT);}
+unsigned int IT=1){   _clr(d_v,NN,IT);}
 
 __device__ void _not(LongPointer d_v, unsigned int NN,
 unsigned int it)
@@ -210,7 +210,7 @@ unsigned int it)
 }
 
 __global__ void not_kernel(LongPointer d_v, unsigned int NN,
-unsigned int IT){   _not(d_v,NN,IT);}
+unsigned int IT=1){   _not(d_v,NN,IT);}
 
 
 __global__ void setbit_kernel(LongPointer d_v,unsigned int n, int bit)
@@ -240,7 +240,7 @@ void __global__ getbit_kernel(LongPointer d_v, unsigned int n,int *d_res)
 }
 
 __global__ void mask_kernel(LongPointer d_v,int num, unsigned int NN,
-unsigned int IT){   _mask(d_v,num,NN,IT);}
+unsigned int IT=1){   _mask(d_v,num,NN,IT);}
 
 __device__ void _mask(LongPointer d_v, int num,unsigned int NN,
 		unsigned int it)
@@ -271,7 +271,7 @@ __device__ void _mask(LongPointer d_v, int num,unsigned int NN,
 }
 
 void __global__ shiftup_kernel(LongPointer d_v, LongPointer d_v_in,int i,unsigned int NN,
-		unsigned int it)
+		unsigned int it=1)
 {
 	unsigned long long int teal, head;
 	int num_el=i>>6;//номер элемента в большем слайсе
@@ -298,7 +298,7 @@ void __global__ shiftup_kernel(LongPointer d_v, LongPointer d_v_in,int i,unsigne
 }
 
 void __global__ shiftdown_kernel(LongPointer d_v, LongPointer d_v_in,int i,unsigned int NN,
-		unsigned int it)
+		unsigned int it=1)
 {
 	int num_el=i>>6;//номер элемента в большем слайсе
 	int num_bit_first= i % SIZE_OF_LONG_INT ;
@@ -320,7 +320,7 @@ void __global__ shiftdown_kernel(LongPointer d_v, LongPointer d_v_in,int i,unsig
 }
 
 void __global__ trim_kernel(LongPointer d_v, LongPointer d_v_in,int i,int h,unsigned int NN,
-		unsigned int it)
+		unsigned int it=1)
 {
 	int num_el=(i-1)>>6;//номер первого элемента в большем слайсе
 	int num_el1=(h-1)>>6; // номер последнего элемента в маленьком

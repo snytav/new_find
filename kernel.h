@@ -4,6 +4,7 @@
  *  библиотека содержит реализацию функций на устройстве
  */
 #define MAX_THREADS 1024
+#define MAX_BLOCK 2024
 #define SIZE_OF_LONG_INT 64
 
 typedef unsigned long long int *LongPointer;
@@ -33,43 +34,43 @@ void __global__ tail_kernel(LongPointer d_v, unsigned int length,unsigned int N1
  * <<<blocks,1>>>
  */
 __device__ void _assign(LongPointer d_v, LongPointer d_v1, unsigned int NN,
-unsigned int IT=1);
+unsigned int IT);
 __global__ void assign_kernel(LongPointer d_v, LongPointer d_v1, unsigned int NN,
-unsigned int IT=1);
+unsigned int IT);
 
 __device__ void _set( LongPointer d_v1, unsigned int NN,
-unsigned int IT=1);
+unsigned int IT);
 __global__ void set_kernel(LongPointer d_v1, unsigned int NN,
-unsigned int IT=1);
+unsigned int IT);
 __device__ void _clr( LongPointer d_v1, unsigned int NN,
-unsigned int IT=1);
+unsigned int IT);
 __global__ void clr_kernel(LongPointer d_v1, unsigned int NN,
-unsigned int IT=1);
+unsigned int IT);
 
 __device__ void _not( LongPointer d_v1, unsigned int NN,
-unsigned int IT=1);
+unsigned int IT);
 __global__ void not_kernel(LongPointer d_v1, unsigned int NN,
-unsigned int IT=1);
+unsigned int IT);
 __device__ void _and(LongPointer d_v, LongPointer d_v1, unsigned int NN,
-unsigned int IT=1);
+unsigned int IT);
 __global__ void and_kernel(LongPointer d_v, LongPointer d_v1, unsigned int NN,
-unsigned int IT=1);
+unsigned int IT);
 __device__ void _or(LongPointer d_v, LongPointer d_v1, unsigned int NN,
-unsigned int IT=1);
+unsigned int IT);
 __global__ void or_kernel(LongPointer d_v, LongPointer d_v1, unsigned int NN,
-unsigned int IT=1);
+unsigned int IT);
 __device__ void _xor(LongPointer d_v, LongPointer d_v1, unsigned int NN,
-unsigned int IT=1);
+unsigned int IT);
 __global__ void xor_kernel(LongPointer d_v, LongPointer d_v1, unsigned int NN,
-unsigned int IT=1);
+unsigned int IT);
 __device__ void _mask( LongPointer d_v1,int i, unsigned int NN,
-unsigned int IT=1);
+unsigned int IT);
 __global__ void mask_kernel(LongPointer d_v1, int i,unsigned int NN,
-unsigned int IT=1);
+unsigned int IT);
 
 __global__ void  shiftup_kernel(LongPointer d_v, LongPointer d_v_in,int i,unsigned int NN,
-		unsigned int IT=1);
+		unsigned int IT);
 __global__ void  shiftdown_kernel(LongPointer d_v, LongPointer d_v_in,int i,unsigned int NN,
-		unsigned int IT=1);
+		unsigned int IT);
 void __global__ trim_kernel(LongPointer d_v, LongPointer d_v_in,int i,int h,unsigned int NN,
-		unsigned int IT=1);
+		unsigned int IT);
