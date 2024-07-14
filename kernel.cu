@@ -227,6 +227,18 @@ __global__ void setbit_kernel(LongPointer d_v,unsigned int n, int bit)
 		d_v[n_el]&=~tmp;
 }
 
+int __device__ _getbit(LongPointer d_v, unsigned int n)
+{ //нумерация с 0, поэтому не добавляется
+	unsigned int n_el=(n-1)/SIZE_OF_LONG_INT;
+	unsigned int n_i=(n-1)%SIZE_OF_LONG_INT;
+
+	unsigned long long int tmp=1;
+	tmp=tmp<<n_i;
+	tmp=tmp&d_v[n_el];
+	return (tmp==0)?0:1;
+//	printf("tmp=%lx bit=%d\n",tmp,*d_res);
+}
+
 void __global__ getbit_kernel(LongPointer d_v, unsigned int n,int *d_res)
 { //нумерация с 0, поэтому не добавляется
 	unsigned int n_el=(n-1)/SIZE_OF_LONG_INT;

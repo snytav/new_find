@@ -4,13 +4,14 @@
 #include <stdio.h>
 #include <time.h>
 //#include "slice.h"
-#include "table.h"
+//#include "table.h"
 #include "cuPrintf.cuh"
 #include "cuPrintf.cu"
+#include "basic.h"
 
 #define MAX 999999
-#define N 2
-#define L  N*64+32
+#define N 1
+#define L  N*64
 
 unsigned int FND(unsigned long long *d_v)
 {
@@ -64,24 +65,33 @@ int main()
     cudaPrintfDisplay(stdout, true);
     cudaPrintfEnd();
 */
-    Slice X(2*L),Y(L);
-    Table T(2*L,L);
+	unsigned int sz=5,lth=L;
+    Slice X(lth),Y(sz),Z(lth);
+    Table T(lth,sz);
  //   Y.SET();
  //   Y.NOT();
     X.SET();
-    T.SetCol(&X,10);
-    T.SetCol(&X,70);
-    T.SetCol(&X,L-3);
-    int i=121;
+    T.SetCol(&X,1);
+   // T.SetCol(&X,70);
+    T.SetCol(&X,sz-2);
+    int i=21;
     T.GetRow(&Y,i);
 //    T.GetCol(&X,1);
-    Y.fprint("row_121");
+    Y.print("row_21");
 
 //    printf(" ZERO %d\n", X.ZERO());
  //   printf("%d %d ZERO %d\n",i,X.STEP(), X.SOME()); // так нельзя, Х не успевает обновляться
  //   printf("%d STEP=%d\n",i,X.STEP());
  //   Y.trim(15,L,&X);
  //   Y.fprint("tream");
+    MATCH(&T,&X,&Y,&Z);
+    Z.print("MATCH_res");
+    printf("MATCH i=%i res=%i\n",i,Z.FND());
+    for(int i=1;i<=sz;i++)
+    {
+    	T.GetCol(&X,i);
+    	X.print("col");
+    }
     return 0;
 }
  

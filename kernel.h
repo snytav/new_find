@@ -23,7 +23,9 @@ void __global__ numb_kernel(LongPointer d_v, unsigned int length,unsigned int N1
 
 //shiftup(k), shiftdown(k)
 //getbit(k) и setbit(k,bit)
+
 void __global__ setbit_kernel(LongPointer d_v, unsigned int n, int bit);
+int __device__ _getbit(LongPointer d_v, unsigned int n);
 void __global__ getbit_kernel(LongPointer d_v, unsigned int n,int *d_res);
 
 void __global__ tail_kernel(LongPointer d_v, unsigned int length,unsigned int N1);

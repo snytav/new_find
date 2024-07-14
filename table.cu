@@ -149,7 +149,7 @@ __global__ void getRow_kernel(LongPointer p,int n,LongPointer d_v, int size,unsi
 //#endif
 //	long_to_binary(*d_rhs,s);
 	for(int i=0; i<IT;i++)
-	{
+	{   tmp[threadIdx.x]=0;
 		if (index<size)
 		{   d_rhs = &p[index*NN];
 			n_el1=(index)/SIZE_OF_LONG_INT;
@@ -200,14 +200,18 @@ void Table::fprint(char *label)
   	strcat(fname,".dat");
   	pFile = fopen (fname,"w");
   	fprintf(pFile,"%s (%dx%d)\n%s\n",label,length,size);
-/* печать слайса переделать
+// печать  64 строк слайса
   	char *d_str, *str;
-  	  	 cudaMalloc(&d_str,NN*SIZE_OF_LONG_INT*sizeof(char));
-  	  	 str=new char[NN*SIZE_OF_LONG_INT];
-  	  	 print_kernel<<<blocks,1>>>(d_v,d_str,length,NN,IT);
-  	  	cudaMemcpy(str,d_str,NN*SIZE_OF_LONG_INT*sizeof(char),cudaMemcpyDeviceToHost);
-  	    fprintf(pFile,"%s\n",str);
-/*/
+  	  	 cudaMalloc(&d_str,SIZE_OF_LONG_INT*(size+1)*sizeof(char));
+  	  	 str=new char[SIZE_OF_LONG_INT*(size+1)];
+  	  for(int i=0;i<NN;i++)
+  	  {
+ // 	  	 print_block_kernel<<<blocks,1>>>(d_v,d_str,length,size,IT);
+  	  	cudaMemcpy(str,d_str,SIZE_OF_LONG_INT*(size+1)*sizeof(char),cudaMemcpyDeviceToHost);
+  	    fprintf(pFile,"%s\n",str);//есть вероятность, что не все '0x0A'- перенос строки
+  	  }
+//
   	fclose (pFile);
   	cudaFree(d_str);
+  	delete[] str;
   }
