@@ -10,7 +10,7 @@
 #include "basic.h"
 
 #define MAX 999999
-#define N 1
+#define N 10
 #define L  N*64
 
 unsigned int FND(unsigned long long *d_v)
@@ -87,11 +87,12 @@ int main()
     MATCH(&T,&X,&Y,&Z);
     Z.print("MATCH_res");
     printf("MATCH i=%i res=%i\n",i,Z.FND());
-    for(int i=1;i<=sz;i++)
+ /*   for(int i=1;i<=sz;i++)
     {
     	T.GetCol(&X,i);
     	X.print("col");
     }
+    */
     return 0;
 }
  

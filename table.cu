@@ -135,7 +135,9 @@ void Table::GetRow1(Slice* X,unsigned int i)
 
 __global__ void getRow_kernel(LongPointer p,int n,LongPointer d_v, int size,unsigned NN,unsigned int IT)
 {   __shared__ unsigned long long int tmp[SIZE_OF_LONG_INT];
-	int index=(threadIdx.x + blockIdx.x*blockDim.x)*IT;
+	int index=(threadIdx.x + blockIdx.x*blockDim.x);
+	tmp[threadIdx.x]=0;
+
 	if (index>size-1) return;
 	LongPointer d_rhs;//для каждой нити свой столбец
 
@@ -165,20 +167,21 @@ __global__ void getRow_kernel(LongPointer p,int n,LongPointer d_v, int size,unsi
 		// изменяет только один бит, но теоретически так нельзя, лучше через reduce
 			tmp[threadIdx.x]=(bit==1)?1:0;
 			tmp[threadIdx.x]=tmp[threadIdx.x]<<n_i1;
-
-//			printf("(%d,%d,%lx) ",index,bit,tmp[threadIdx.x]);
+//			printf("\n#%d =%d %lu\n",n_i1,bit,tmp[threadIdx.x]);
 		__syncthreads();
 		if (threadIdx.x<8){
+//			printf("\n index=%d:[%d](%d %lx,%d,%lx\n) ",index,blockIdx.x,threadIdx.x,tmp[threadIdx.x*8],threadIdx.x*8+7,tmp[threadIdx.x*8+7]);
 			tmp[threadIdx.x*8]=tmp[threadIdx.x*8]|tmp[1+threadIdx.x*8]|tmp[2+threadIdx.x*8]
 			                    |tmp[3+threadIdx.x*8]|tmp[4+threadIdx.x*8]|tmp[5+threadIdx.x*8]
 			                    |tmp[6+threadIdx.x*8]|tmp[7+threadIdx.x*8];
-//			printf("\n =%d:[%d,%d](<%d,%d>,%lx) ",index,blockIdx.x,threadIdx.x,threadIdx.x*8,7+threadIdx.x*8,tmp[threadIdx.x*8]);
+
 			}
 		__syncthreads();
 		if (threadIdx.x==0)
 			d_v[n_el1]=tmp[0]|tmp[8]|tmp[16]|tmp[24]|tmp[32]|tmp[40]|tmp[48]|tmp[56];
+//		printf("<0 %lx 8 %lx 16 %lx 24 %lx 32 %lx 48 %lx 56 %lx>",tmp[0],tmp[8],tmp[16],tmp[24],tmp[32],tmp[40],tmp[48],tmp[56]);
 		}
-		index++;
+		index+=blockIdx.x*blockDim.x;
 	}
 }
 

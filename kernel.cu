@@ -26,7 +26,13 @@ void __global__ find_kernel(LongPointer d_v, unsigned int length,unsigned int N1
 {
     __shared__ unsigned int res_by_thread[MAX_THREADS];
     unsigned int local_1st_nonzero,local_it_1st_nonzero,tmp;
-    unsigned int n = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (gridDim.x>1)
+    	{
+    		if (threadIdx.x==0) printf("find_kernel:<<<1,threads>>>");
+    	}
+
+    unsigned int n = threadIdx.x;
     unsigned int active_threads=gridDim.x * blockDim.x;
 
     // res_by_thread[n] для it элементов:
@@ -58,7 +64,11 @@ void __global__ find_kernel(LongPointer d_v, unsigned int length,unsigned int N1
 void __global__ some_kernel(LongPointer d_v,unsigned int N1,unsigned int it, int*res)
 {
 	__shared__ unsigned int tmp;
-	unsigned int n = blockIdx.x * blockDim.x + threadIdx.x;
+	if (gridDim.x>1)
+	{
+		if (threadIdx.x==0) printf("some_kernel:<<<1,threads>>>");
+	}
+	unsigned int n =threadIdx.x;
 	if (n==0) tmp=0;
 	__syncthreads();
 
@@ -89,7 +99,11 @@ void __global__ tail_kernel(LongPointer d_v, unsigned int length,unsigned int N1
 void __global__ zero_kernel(LongPointer d_v,unsigned int N1,unsigned int it, int*res)
 {
 	__shared__ unsigned int tmp;
-	unsigned int n = blockIdx.x * blockDim.x + threadIdx.x;
+	if (gridDim.x>1)
+		{
+			if (threadIdx.x==0) printf("zero_kernel:<<<1,threads>>>");
+		}
+	unsigned int n = threadIdx.x;
 	if (n==0) tmp=1;
 	__syncthreads();
 
@@ -108,8 +122,12 @@ void __global__ numb_kernel(LongPointer d_v, unsigned int length,unsigned int N1
 {
     __shared__ unsigned int res_by_thread[MAX_THREADS];
     unsigned int tmp;
-    unsigned int n = blockIdx.x * blockDim.x + threadIdx.x;
-    unsigned int active_threads=gridDim.x * blockDim.x;
+    if (gridDim.x>1)
+    {
+    	if (threadIdx.x==0) printf("numb_kernel:<<<1,threads>>>");
+    }
+    unsigned int n = threadIdx.x;
+    unsigned int active_threads=blockDim.x;
 
     // res_by_thread[n] для it элементов:
     tmp=0;
@@ -137,7 +155,11 @@ void __global__ numb_kernel(LongPointer d_v, unsigned int length,unsigned int N1
 __device__ void _and(LongPointer d_v, LongPointer d_v1, unsigned int NN,
 unsigned int it)
 {
-    unsigned int index=(blockIdx.x*blockDim.x+threadIdx.x)*it;
+    unsigned int index;
+
+    if (gridDim.x>1) index=blockIdx.x*it;
+    else index=threadIdx.x*it;
+
     for(int i=0; i<it;i++)
 	if (index+i<NN) d_v[index+i] &= d_v1[index+i];
 }
@@ -149,7 +171,11 @@ unsigned int IT=1){   _and(d_v,d_v1,NN,IT);}
 __device__ void _or(LongPointer d_v, LongPointer d_v1, unsigned int NN,
 unsigned int it)
 {
-    unsigned int index=(blockIdx.x*blockDim.x+threadIdx.x)*it;
+	unsigned int index;
+
+	if (gridDim.x>1) index=blockIdx.x*it;
+	else index=threadIdx.x*it;
+
     for(int i=0; i<it;i++)
 	if (index+i<NN) d_v[index+i] |= d_v1[index+i];
 }
@@ -160,7 +186,11 @@ unsigned int IT=1){   _or(d_v,d_v1,NN,IT);}
 __device__ void _xor(LongPointer d_v, LongPointer d_v1, unsigned int NN,
 unsigned int it)
 {
-    unsigned int index=(blockIdx.x*blockDim.x+threadIdx.x)*it;
+	unsigned int index;
+
+	if (gridDim.x>1) index=blockIdx.x*it;
+	else index=threadIdx.x*it;
+
     for(int i=0; i<it;i++)
 	if (index+i<NN) d_v[index+i] ^= d_v1[index+i];
 }
@@ -171,7 +201,11 @@ unsigned int IT=1){   _xor(d_v,d_v1,NN,IT);}
 __device__ void _assign(LongPointer d_v, LongPointer d_v1, unsigned int NN,
 unsigned int it)
 {
-    unsigned int index=(blockIdx.x*blockDim.x+threadIdx.x)*it;
+	unsigned int index;
+
+	if (gridDim.x>1) index=blockIdx.x*it;
+	else index=threadIdx.x*it;
+
     for(int i=0; i<it;i++)
 	if (index+i<NN) d_v[index+i] = d_v1[index+i];
 }
@@ -182,7 +216,11 @@ unsigned int IT=1){   _assign(d_v,d_v1,NN,IT);}
 __device__ void _set(LongPointer d_v, unsigned int NN,
 unsigned int it)
 {
-    unsigned int index=(blockIdx.x*blockDim.x+threadIdx.x)*it;
+	unsigned int index;
+
+		if (gridDim.x>1) index=blockIdx.x*it;
+		else index=threadIdx.x*it;
+
     for(int i=0; i<it;i++)
 	if (index+i<NN) d_v[index+i] =0xFFFFFFFFFFFFFFFF;
 }
@@ -193,7 +231,11 @@ unsigned int IT=1){   _set(d_v,NN,IT);}
 __device__ void _clr(LongPointer d_v, unsigned int NN,
 unsigned int it)
 {
-    unsigned int index=(blockIdx.x*blockDim.x+threadIdx.x)*it;
+	unsigned int index;
+
+		if (gridDim.x>1) index=blockIdx.x*it;
+		else index=threadIdx.x*it;
+
     for(int i=0; i<it;i++)
 	if (index+i<NN) d_v[index+i] =0;
 }
@@ -204,7 +246,11 @@ unsigned int IT=1){   _clr(d_v,NN,IT);}
 __device__ void _not(LongPointer d_v, unsigned int NN,
 unsigned int it)
 {
-    unsigned int index=(blockIdx.x*blockDim.x+threadIdx.x)*it;
+	unsigned int index;
+
+		if (gridDim.x>1) index=blockIdx.x*it;
+		else index=threadIdx.x*it;
+
     for(int i=0; i<it;i++)
 	if (index+i<NN) d_v[index+i] =~d_v[index+i];
 }
@@ -261,7 +307,11 @@ __device__ void _mask(LongPointer d_v, int num,unsigned int NN,
   int el=num % SIZE_OF_LONG_INT;
 //  printf("%i in %i \n", num,num_el);
 
-  unsigned int index=(blockIdx.x*blockDim.x+threadIdx.x)*it;
+  unsigned int index;
+
+  	if (gridDim.x>1) index=blockIdx.x*it;
+  	else index=threadIdx.x*it;
+
   for(int i=0; i<it;i++)
 	  if((index+i)<NN)
 	  {
@@ -291,7 +341,11 @@ void __global__ shiftup_kernel(LongPointer d_v, LongPointer d_v_in,int i,unsigne
 	int num_bit_first= i % SIZE_OF_LONG_INT ; // номер бита в элементе, который станет первым в маленьком слайсе
 //int num_bit_last = h % SIZE_OF_LONG_INT;
 //printf("num_els %i (%i) bits from %i  \n",blockIdx.x +num_el,gridDim.x,num_bit_first);
-	unsigned int index=(blockIdx.x*blockDim.x+threadIdx.x)*it;
+	unsigned int index;
+
+		if (gridDim.x>1) index=blockIdx.x*it;
+		else index=threadIdx.x*it;
+
 	for(int i=0; i<it;i++)
 	{
 		head=d_v_in[index+num_el]>>(num_bit_first);
@@ -315,7 +369,11 @@ void __global__ shiftdown_kernel(LongPointer d_v, LongPointer d_v_in,int i,unsig
 	int num_el=i>>6;//номер элемента в большем слайсе
 	int num_bit_first= i % SIZE_OF_LONG_INT ;
 	unsigned long long int teal,head;
-	unsigned int index=(blockIdx.x*blockDim.x+threadIdx.x)*it;
+	unsigned int index;
+
+		if (gridDim.x>1) index=blockIdx.x*it;
+		else index=threadIdx.x*it;
+
 	for(int i=0; i<it;i++)
 	{
 		if (index >num_el)//?????????

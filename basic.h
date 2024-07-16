@@ -2,40 +2,52 @@
 
 #define AUX_COUNT 3
 
-void MATCH(Table *tab, Slice *X, Slice *w, Slice *Z);
-
-__global__ void match_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_w,LongPointer d_z,
-		unsigned int size,unsigned int NN, unsigned int IT);//<<<NN,1>>>
-
-__device__ void match(LongPointer d_tab,LongPointer d_x,LongPointer d_w,LongPointer d_z,
-		unsigned int size,unsigned int NN, unsigned int IT);
+// для использования в I группе, конфигурация ядра <<<1,threads>>>
+// нужна синхронизация по всем потокам
+__device__ bool some(LongPointer d_y,unsigned int length,unsigned int NN, unsigned int it);
 /*
-void GEL(Table *T, Slice *w, Slice *X,Slice *Y);
-__global__ void gel_kernel(LongPointer d_tab, LongPointer d_w,LongPointer d_x,LongPointer d_y,unsigned int size,unsigned int NN,
-		unsigned int IT);//<<<NN,1>>>
-__device__ void gel(LongPointer *d_tab, unsigned long long int * d_w,unsigned long long int *d_x,unsigned long long int *d_y,int size);
-
-void LESS(Table *T, Slice *X, Slice *v,Slice *Y);
-__global__ void less_kernel(LongPointer *d_tab,unsigned long long int *d_x,unsigned long long int *d_v,unsigned long long int *d_y,int size);//<<<NN,1>>>
-__device__ void less(LongPointer *d_tab,unsigned long long int *d_x,unsigned long long int *d_v,unsigned long long int *d_y,int size);
-
-void GREAT(Table *T, Slice *X, Slice *v,Slice *Y);
-__global__ void great_kernel(LongPointer *d_tab,unsigned long long int *d_x,unsigned long long int *d_v,unsigned long long int *d_y,int size);//<<<NN,1>>>
-__device__ void great(LongPointer *d_tab,unsigned long long int *d_x,unsigned long long int *d_v,unsigned long long int *d_y,int size);
-#endif /* ALGORITHMS_H_ */
-
-/*
-
+*---------------------------- I группа алгоритмов--------------------------------
+* конфигурация ядра <<<1,threads,NN*sizeof(unsigned long long int)>>>
+* нужна синхронизация по всем потокам
+* использует вспомогательный слайс
+*/
 void MIN(Table *T, Slice *X, Slice*Z);
-void MIN(Table *T, Slice *X, Slice*Z, Slice *Y);
-void MIN_1(Table *T, Slice *X, Slice*Z, Slice *Y);
+__global__ void min_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_z,
+		unsigned int length, unsigned int size,unsigned int NN, unsigned int IT);
 
 void MAX(Table *T, Slice *X, Slice*Z);
+__global__ void max_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_z,
+		unsigned int length, unsigned int size,unsigned int NN, unsigned int IT);
+/*
+*---------------------------- II группа алгоритмов--------------------------------
+* конфигурация ядра <<<blocks,1,NN*AUX_COUNT*sizeof(unsigned long long int)>>>
+*/
+void MATCH(Table *tab, Slice *X, Slice *w, Slice *Z);
+__global__ void match_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_w,LongPointer d_z,
+		unsigned int size,unsigned int NN, unsigned int IT);//<<<NN,1>>>
+__device__ void match(LongPointer d_tab,LongPointer d_x,LongPointer d_w,LongPointer d_z,
+		unsigned int size,unsigned int NN, unsigned int IT);
 
-void CLEAR(Table *T);
-__global__ void clear_kernel(LongPointer *d_tab, int h);
-__device__ void clear(LongPointer *d_tab, int h);
+void GEL(Table *tab, Slice *w, Slice *X, Slice *Y);
+__global__ void gel_kernel(LongPointer d_tab, LongPointer d_w,LongPointer d_x,LongPointer d_y,
+		unsigned int size,unsigned int NN, unsigned int IT);
+__device__ void gel(LongPointer d_tab, LongPointer d_w,LongPointer d_x,LongPointer d_y,
+		unsigned int size,unsigned int NN, unsigned int IT);
 
+void LESS(Table *T, Slice *X, Slice *v,Slice *Y);
+__global__ void less_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_v,LongPointer d_y,
+		unsigned int size,unsigned int NN, unsigned int IT);
+__device__ void less(LongPointer d_tab,LongPointer d_x,LongPointer d_v,LongPointer d_y,
+		unsigned int size,unsigned int NN, unsigned int IT);
+
+
+void GREAT(Table *T, Slice *X, Slice *v,Slice *Y);
+__global__ void great_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_v,LongPointer d_y,
+		unsigned int size,unsigned int NN, unsigned int IT);//<<<NN,1>>>
+__device__ void great(LongPointer d_tab,LongPointer d_x,LongPointer d_v,LongPointer d_y,
+		unsigned int size,unsigned int NN, unsigned int IT);
+
+/*
 void SETMIN(Table *T, Table *F, Slice *X, Slice *Z);
 __global__ void setmin_kernel(LongPointer *d_t, LongPointer *d_f,unsigned long long int *d_x,unsigned long long int *d_z ,int size);//<<<NN,1>>>
 __device__ void setmin(LongPointer *d_t, LongPointer *d_f,unsigned long long int *d_x,unsigned long long int *d_z,int size );
@@ -47,11 +59,16 @@ __device__ void setmax(LongPointer *d_t, LongPointer *d_f,unsigned long long int
 void HIT(Table *T, Table *F, Slice *X, Slice *Z);
 __global__ void hit_kernel(LongPointer *d_t, LongPointer *d_f,unsigned long long int *d_x,unsigned long long int *d_z ,int size);//<<<NN,1>>>
 __device__ void hit(LongPointer *d_t, LongPointer *d_f,unsigned long long int *d_x,unsigned long long int *d_z ,int size);
+//---------------------------- IV группа алгоритмов--------------------------------
+void CLEAR(Table *T);
+__global__ void clear_kernel(LongPointer *d_tab, int h);
+__device__ void clear(LongPointer *d_tab, int h);
 
 void TMERGE(Table *T,  Slice *X, Table *F, int k=1);
 __global__ void tmerge_kernel(LongPointer *d_t,unsigned long long int *d_x, LongPointer *d_f,int size);//<<<NN,k>>> k=1,...,M
 __device__ void tmerge(LongPointer *d_t,unsigned long long int *d_x, LongPointer *d_f,int size);
 __device__ void tmerge_par(LongPointer *d_t,unsigned long long int *d_x, LongPointer *d_f); // blockDim.y=M
+
 void WMERGE(Slice *v,  Slice *X, Table *F, int k=1);
 //size не вставлен может ли выступать в этой роли k нужно смотреть
 __global__ void wmerge_kernel(unsigned long long int *d_v,unsigned long long int *d_x, LongPointer *d_f, int k);//<<<NN,k>>> k=1,...,M
@@ -81,7 +98,7 @@ __device__ void tcopy3(LongPointer *d_t, int j, int h, LongPointer *d_f);
 void TCOPY4(Table *T,int j, int h, Table *F,int k=1);// Копирует T как горизонтальную полосу в F
 __global__ void tcopy4_kernel(LongPointer *d_t, int j,int h, LongPointer *d_f);//!<<<NN,k>>> k=1,...,h
 __device__ void tcopy4(LongPointer *d_t, int j, int h, LongPointer *d_f);
-
+//---------------------------- III группа алгоритмов--------------------------------
 void ADDV(Table *T, Table *R, Slice *X, Table *S);
 __global__ void addv_kernel(LongPointer *d_t,LongPointer *d_r,int h,unsigned long long int *d_x,LongPointer *d_s,unsigned long long int *d_b);//<<<NN,1>>>
 //d_b перенос на предыдущий разряд
@@ -106,7 +123,7 @@ __device__ void subtc(LongPointer *d_t, unsigned long long int *d_x, unsigned lo
 void SUBTC1(Table *T, Slice *X, Slice *w, Table *S);
 __global__ void subtc1_kernel(LongPointer *d_t, unsigned long long int *d_x, unsigned long long int *d_w, LongPointer *d_s,int k,unsigned long long int *d_m);
 __device__ void subtc1(LongPointer *d_t, unsigned long long int *d_x, unsigned long long int *d_w, LongPointer *d_s,int k,unsigned long long int *d_m);
-
+//---------------------------------------------------------------------------
 void WTRANS(Slice *w, int h, Table *R);//<<<NN,64>>>
 __global__ void wtrans_kernel(unsigned long long int *d_w, int h,int length, LongPointer *d_r);
 __device__ void wtrans(unsigned long long int *d_w, int h, int length, LongPointer *d_r);
