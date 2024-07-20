@@ -5,79 +5,37 @@
 #include <time.h>
 //#include "slice.h"
 //#include "table.h"
-#include "cuPrintf.cuh"
-#include "cuPrintf.cu"
+//#include "cuPrintf.cuh"
+//#include "cuPrintf.cu"
+
+#include <cmath>
 #include "basic.h"
+#include "NPproc.h"
 
-#define MAX 999999
-#define N 10
-#define L  N*64
-
-unsigned int FND(unsigned long long *d_v)
-{
-	// вычислить конфигурацию для find_simple
-	unsigned int N1 =N,threads,it;
-	int *d_res,h_res;
-	cudaMalloc(&d_res, sizeof(int));
-
-//	for (N1=512;N1<1000000;N1=N1<<1)
-	{
-	   threads = min(MAX_THREADS,N1);
-	   it=(N1-1)/threads+1;
-	   printf("N=%d threads=%d,IT=%d \n",N1,threads,it);
-	}
-	numb_kernel<<<1,threads>>>(d_v,N*64-32,N1,it,d_res);
-	cudaMemcpy(&h_res, d_res, sizeof(int), cudaMemcpyDeviceToHost);
-	printf("NUMB=%d\n",h_res);
-
-	find_kernel<<<1,threads>>>(d_v,(N*64),N1,it,d_res);
-	cudaMemcpy(&h_res, d_res, sizeof(int), cudaMemcpyDeviceToHost);
-	return h_res;
-}
-
-
+#define NN_MAX 2048
+// 1536
+// AUX_COUNT 4 при большем числе попытка вызвать базовую процедуру выдает ошибку 11
 int main()
 {
- /*   unsigned long long h_v[N];/* = {0xABCDABCDABCD0000, 0x0F08000800080070,
-                                0xABCDABCDAB900000, 0x0F08000800080700,
-                                0xABCDABCDABC80000, 0x0F08000807000000,
-                                0xABCDABCDAB001000, 0x0F08000800080500 };*/
 /*
-    unsigned long long* d_v;
-//  int *d_res,h_res;
-//   cudaMalloc(&d_res, sizeof(int));
 
-    for (int i = 0; i < N; i++)
-    {
-        h_v[i] = (i >0) ? 0x8000000000000008 : 0;//rand() % MAX + 1;
-        int sh = rand() % 32 + 1;
-        //h_v[i] <<= sh;
-        //printf("%d %30lx shift %d \n",i,h_v[i],sh);
-    }
-    cudaMalloc(&d_v, N * sizeof(unsigned long long));
+	unsigned int N1,sz=500,lth=64*2048;//powl(2,sz);
 
-    cudaMemcpy(d_v, h_v, N * sizeof(unsigned long long), cudaMemcpyHostToDevice);
- // печать с устройства
-    cudaPrintfInit();
 
-    printf("FND= %d \n",FND(d_v));
-
-    cudaPrintfDisplay(stdout, true);
-    cudaPrintfEnd();
-*/
-	unsigned int sz=5,lth=L;
     Slice X(lth),Y(sz),Z(lth);
     Table T(lth,sz);
+    N1=X.NN;
+
+    printf("Размеры: size=%u length =%u, NN=%u IT=%u\n",sz,lth,N1,X.IT);
  //   Y.SET();
  //   Y.NOT();
     X.SET();
-    T.SetCol(&X,1);
-   // T.SetCol(&X,70);
-    T.SetCol(&X,sz-2);
-    int i=21;
+
+    init_stable<<<sz,1>>>(T.get_device_pointer(),N1,sz);
+    int i=521;
     T.GetRow(&Y,i);
 //    T.GetCol(&X,1);
-    Y.print("row_21");
+    Y.print("row_521");
 
 //    printf(" ZERO %d\n", X.ZERO());
  //   printf("%d %d ZERO %d\n",i,X.STEP(), X.SOME()); // так нельзя, Х не успевает обновляться
@@ -85,14 +43,26 @@ int main()
  //   Y.trim(15,L,&X);
  //   Y.fprint("tream");
     MATCH(&T,&X,&Y,&Z);
-    Z.print("MATCH_res");
+    cudaError_t err = cudaGetLastError();
+    printf("errors after MATCH %d\n",err);
+    Z.fprint("MATCH_res");
     printf("MATCH i=%i res=%i\n",i,Z.FND());
+    T.GetRow(&Y,lth);
+    Y.print("row");
+    ADDC1(&T,&Y,&X);//последнюю строку добавляем ко всем
+
+    T.GetRow(&Y,lth);
+    Y.print("row_last");
  /*   for(int i=1;i<=sz;i++)
     {
     	T.GetCol(&X,i);
     	X.print("col");
     }
     */
+
+    knapsack_exp();
+	cudaError_t err = cudaGetLastError();
+	if (err>0) printf("errors after knapsack_exp %d\n",err);
     return 0;
 }
  

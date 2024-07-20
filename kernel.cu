@@ -161,7 +161,10 @@ unsigned int it)
     else index=threadIdx.x*it;
 
     for(int i=0; i<it;i++)
-	if (index+i<NN) d_v[index+i] &= d_v1[index+i];
+	if (index+i<NN) {
+		d_v[index+i] &= d_v1[index+i];
+//		printf("<%i,%i,%i> ",index,i,index+i);
+	}
 }
 
 __global__ void and_kernel(LongPointer d_v, LongPointer d_v1, unsigned int NN,

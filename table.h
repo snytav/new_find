@@ -1,3 +1,6 @@
+#ifndef TABLE_H_
+#define TABLE_H_
+
 #include "kernel.h"
 #include "slice.h"
 
@@ -24,3 +27,5 @@ __device__ void _getCol(LongPointer d_table, LongPointer d_slice,unsigned int i,
 
 __device__ void _setCol(LongPointer d_table, LongPointer d_slice,unsigned int i,
 		unsigned int NN,unsigned int IT);
+
+#endif /* TABLE_H_ */

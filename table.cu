@@ -192,7 +192,13 @@ void Table::GetRow(Slice* X,unsigned int i)
     blocks = min(MAX_BLOCK,NN1);
     it=(size-1)/(blocks*SIZE_OF_LONG_INT)+1;
 //    printf("GetRow1 %d %d it=%d\n",size,blocks,it);
+
 	getRow_kernel<<<blocks,SIZE_OF_LONG_INT>>>(d_v,i,X->get_device_pointer(),size,NN,it);
+}
+
+__global__ void print_block_kernel(LongPointer d_v,char *d_str,unsigned int length,unsigned int size,unsigned int IT)
+{
+
 }
 
 void Table::fprint(char *label)
