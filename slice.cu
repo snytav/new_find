@@ -18,7 +18,10 @@
 
     cudaMalloc(&d_v,NN*sizeof(unsigned long long int));
     }
-
+ Slice::~Slice()
+   {
+	    cudaFree(d_v);
+    }
  void Slice::ASSIGN(Slice *X)
  {
 	 assign_kernel<<<blocks,1>>>(d_v, X->get_device_pointer(),NN,IT);

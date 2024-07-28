@@ -2,7 +2,15 @@
 #include <stdio.h>
 
 // память для AUX_CONT вспомогательных слайсов
-extern __shared__ unsigned long long int aux_slice[];
+//extern __shared__ unsigned long long int aux_slice[];
+LongPointer d_aux_slice;
+
+int InitAuxSlices(unsigned  int NN)
+{
+	cudaMalloc(&d_aux_slice,AUX_COUNT*NN*sizeof(unsigned long long int));
+	cudaError_t err = cudaGetLastError();
+	return err;
+}
 
 void MATCH(Table *tab, Slice *X, Slice *w, Slice *Z)
 {
@@ -11,20 +19,21 @@ void MATCH(Table *tab, Slice *X, Slice *w, Slice *Z)
 	IT=X->IT;
 	blocks=X->blocks;
 	cudaFuncSetAttribute(match_kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, NN*AUX_COUNT*sizeof(unsigned long long int));
-	match_kernel<<<blocks,1,NN*AUX_COUNT*sizeof(unsigned long long int)>>>(tab->get_device_pointer(),X->get_device_pointer(),w->get_device_pointer(),Z->get_device_pointer(),tab->size,NN,IT);
+	match_kernel<<<blocks,1>>>(tab->get_device_pointer(),X->get_device_pointer(),w->get_device_pointer(),Z->get_device_pointer(),tab->size,NN,IT,d_aux_slice);
+	//<<<blocks,1,NN*AUX_COUNT*sizeof(unsigned long long int)>>>(tab->get_device_pointer(),X->get_device_pointer(),w->get_device_pointer(),Z->get_device_pointer(),tab->size,NN,IT);
     cudaError_t err = cudaGetLastError();
     if (err>0) printf("errors after MATCH %d\n",err);
 }
 
 __global__ void match_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_w,LongPointer d_z,
-		unsigned int size,unsigned int NN, unsigned int IT)
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {  // if(blockIdx.x==0)printf("MATCH start \n");
-	match(d_tab,d_x,d_w,d_z,size,NN,IT);
+	match(d_tab,d_x,d_w,d_z,size,NN,IT,aux_slice);
 }
 
 
 __device__ void match(LongPointer d_tab,LongPointer d_x,LongPointer d_w,LongPointer d_z,
-		unsigned int size,unsigned int NN, unsigned int IT)
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
 	LongPointer d_y=&aux_slice[0];
 	unsigned int i;
@@ -52,19 +61,19 @@ void GEL(Table *tab, Slice *w, Slice *X, Slice *Y)
 	NN=X->NN;
 	IT=X->IT;
 	blocks=X->blocks;
-	gel_kernel<<<blocks,1,NN*AUX_COUNT*sizeof(unsigned long long int)>>>(tab->get_device_pointer(),w->get_device_pointer(),X->get_device_pointer(),Y->get_device_pointer(),tab->size,NN,IT);
+	gel_kernel<<<blocks,1>>>(tab->get_device_pointer(),w->get_device_pointer(),X->get_device_pointer(),Y->get_device_pointer(),tab->size,NN,IT,d_aux_slice);
 
 	cudaError_t err = cudaGetLastError();
 	if (err>0) printf("errors after GEL %d\n",err);
 }
 __global__ void gel_kernel(LongPointer d_tab, LongPointer d_w,LongPointer d_x,LongPointer d_y,
-		unsigned int size,unsigned int NN, unsigned int IT)
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
-	gel(d_tab,d_w,d_x,d_y,size,NN,IT);
+	gel(d_tab,d_w,d_x,d_y,size,NN,IT,aux_slice);
 }
 
 __device__ void gel(LongPointer d_tab, LongPointer d_w,LongPointer d_x,LongPointer d_y,
-		unsigned int size,unsigned int NN, unsigned int IT)
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
       LongPointer d_z=&aux_slice[0];
       LongPointer d_b=&aux_slice[NN];
@@ -96,25 +105,24 @@ __device__ void gel(LongPointer d_tab, LongPointer d_w,LongPointer d_x,LongPoint
       }
 }
 
-
 void LESS(Table *T, Slice *X, Slice *w,Slice *Y)
 {
 	unsigned int NN, IT,blocks;
 		NN=X->NN;
 		IT=X->IT;
 		blocks=X->blocks;
-		less_kernel<<<blocks,1,NN*AUX_COUNT*sizeof(unsigned long long int)>>>(T->get_device_pointer(),X->get_device_pointer(),w->get_device_pointer(),Y->get_device_pointer(),T->size,NN,IT);
+		less_kernel<<<blocks,1>>>(T->get_device_pointer(),X->get_device_pointer(),w->get_device_pointer(),Y->get_device_pointer(),T->size,NN,IT,d_aux_slice);
 
 		 cudaError_t err = cudaGetLastError();
 		 if (err>0) printf("errors after LESS %d\n",err);
 }
 __global__ void less_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_w,LongPointer d_y,
-		unsigned int size,unsigned int NN, unsigned int IT)
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
-	less(d_tab,d_x,d_w,d_y,size,NN,IT);
+	less(d_tab,d_x,d_w,d_y,size,NN,IT,aux_slice);
 }
 __device__ void less(LongPointer d_tab,LongPointer d_x,LongPointer d_w,LongPointer d_y,
-		unsigned int size,unsigned int NN, unsigned int IT)
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
 	 LongPointer d_y1=&aux_slice[0];
 	 LongPointer d_b=&aux_slice[NN];
@@ -143,17 +151,17 @@ void GREAT(Table *T, Slice *X, Slice *w,Slice *Y)
 		NN=X->NN;
 		IT=X->IT;
 		blocks=X->blocks;
-		great_kernel<<<blocks,1,NN*AUX_COUNT*sizeof(unsigned long long int)>>>(T->get_device_pointer(),X->get_device_pointer(),w->get_device_pointer(),Y->get_device_pointer(),T->size,NN,IT);
+		great_kernel<<<blocks,1>>>(T->get_device_pointer(),X->get_device_pointer(),w->get_device_pointer(),Y->get_device_pointer(),T->size,NN,IT,d_aux_slice);
 		cudaError_t err = cudaGetLastError();
 		if (err>0) printf("errors after GREAT %d\n",err);
 }
 __global__ void great_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_w,LongPointer d_y,
-		unsigned int size,unsigned int NN, unsigned int IT)
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
-	great(d_tab,d_x,d_w,d_y,size,NN,IT);
+	great(d_tab,d_x,d_w,d_y,size,NN,IT,aux_slice);
 }
 __device__ void great(LongPointer d_tab,LongPointer d_x,LongPointer d_w,LongPointer d_y,
-		unsigned int size,unsigned int NN, unsigned int IT)
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
 	 LongPointer d_c=&aux_slice[0];
 	 LongPointer d_b=&aux_slice[NN];
@@ -201,7 +209,7 @@ __device__ bool some(LongPointer d_y,unsigned int length,unsigned int NN, unsign
 }
 
 __global__ void min_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_z,
-		unsigned int length, unsigned int size,unsigned int NN, unsigned int IT)
+		unsigned int length, unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
 	 LongPointer d_y=&aux_slice[0];
 
@@ -222,14 +230,14 @@ void MIN(Table *T, Slice *X, Slice*Z)
 	NN=X->NN;
 	threads = min(MAX_THREADS,NN);
 	IT=(NN-1)/threads+1;
-	min_kernel<<<1,threads,NN*sizeof(unsigned long long int)>>>(T->get_device_pointer(),X->get_device_pointer(),Z->get_device_pointer(),T->length,T->size,NN,IT);
-
+	min_kernel<<<1,threads>>>(T->get_device_pointer(),X->get_device_pointer(),Z->get_device_pointer(),T->length,T->size,NN,IT,d_aux_slice);
+	//<<<1,threads,NN*sizeof(unsigned long long int)>>>
 	cudaError_t err = cudaGetLastError();
 	if (err>0) printf("errors after MIN %d\n",err);
 }
 
 __global__ void max_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_z,
-		unsigned int length, unsigned int size,unsigned int NN, unsigned int IT)
+		unsigned int length, unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
 	 LongPointer d_y=&aux_slice[0];
 
@@ -250,7 +258,7 @@ void MAX(Table *T, Slice *X, Slice*Z)
 	NN=X->NN;
 	threads = min(MAX_THREADS,NN);
 	IT=(NN-1)/threads+1;
-	max_kernel<<<1,threads,NN*sizeof(unsigned long long int)>>>(T->get_device_pointer(),X->get_device_pointer(),Z->get_device_pointer(),T->length,T->size,NN,IT);
+	max_kernel<<<1,threads>>>(T->get_device_pointer(),X->get_device_pointer(),Z->get_device_pointer(),T->length,T->size,NN,IT,d_aux_slice);
 
 	cudaError_t err = cudaGetLastError();
 	    if (err>0) printf("errors after MAX %d\n",err);
@@ -262,20 +270,20 @@ void SETMIN(Table *T, Table *F, Slice *X, Slice *Z)
 	NN=X->NN;
 	IT=X->IT;
 	blocks=X->blocks;
-	setmin_kernel<<<blocks,1,NN*AUX_COUNT*sizeof(unsigned long long int)>>>(T->get_device_pointer(),F->get_device_pointer(),X->get_device_pointer(),Z->get_device_pointer(),T->size,NN,IT);
+	setmin_kernel<<<blocks,1>>>(T->get_device_pointer(),F->get_device_pointer(),X->get_device_pointer(),Z->get_device_pointer(),T->size,NN,IT,d_aux_slice);
 
 	cudaError_t err = cudaGetLastError();
 	    if (err>0) printf("errors after SETMIN %d\n",err);
 }
 
 __global__ void setmin_kernel(LongPointer d_t, LongPointer d_f,LongPointer d_x,LongPointer d_z ,
-		unsigned int size,unsigned int NN, unsigned int IT)//<<<NN,1>>>
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)//<<<NN,1>>>
 {
-	setmin(d_t,d_f,d_x,d_z,size,NN,IT);
+	setmin(d_t,d_f,d_x,d_z,size,NN,IT,aux_slice);
 }
 
 __device__ void setmin(LongPointer d_t, LongPointer d_f,LongPointer d_x,LongPointer d_z ,
-		unsigned int size,unsigned int NN, unsigned int IT)
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
 	LongPointer d_b=&aux_slice[0];
 	LongPointer d_m=&aux_slice[NN];
@@ -308,20 +316,20 @@ void SETMAX(Table *T, Table *F, Slice *X, Slice *Z)
 	NN=X->NN;
 	IT=X->IT;
 	blocks=X->blocks;
-	setmax_kernel<<<blocks,1,NN*AUX_COUNT*sizeof(unsigned long long int)>>>(T->get_device_pointer(),F->get_device_pointer(),X->get_device_pointer(),Z->get_device_pointer(),T->size,NN,IT);
+	setmax_kernel<<<blocks,1>>>(T->get_device_pointer(),F->get_device_pointer(),X->get_device_pointer(),Z->get_device_pointer(),T->size,NN,IT,d_aux_slice);
 
 	cudaError_t err = cudaGetLastError();
 	    if (err>0) printf("errors after SETMAX %d\n",err);
 }
 
 __global__ void setmax_kernel(LongPointer d_t, LongPointer d_f,LongPointer d_x,LongPointer d_z ,
-		unsigned int size,unsigned int NN, unsigned int IT)//<<<NN,1>>>
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)//<<<NN,1>>>
 {
-	setmax(d_t,d_f,d_x,d_z,size,NN,IT);
+	setmax(d_t,d_f,d_x,d_z,size,NN,IT,aux_slice);
 }
 
 __device__ void setmax(LongPointer d_t, LongPointer d_f,LongPointer d_x,LongPointer d_z ,
-		unsigned int size,unsigned int NN, unsigned int IT)
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
 	LongPointer d_b=&aux_slice[0];
 	LongPointer d_m=&aux_slice[NN];
@@ -355,18 +363,18 @@ void HIT(Table *T, Table *F, Slice *X, Slice *Z)
 	NN=X->NN;
 	IT=X->IT;
 	blocks=X->blocks;
-	hit_kernel<<<blocks,1,NN*AUX_COUNT*sizeof(unsigned long long int)>>>(T->get_device_pointer(),F->get_device_pointer(),X->get_device_pointer(),Z->get_device_pointer(),T->size,NN,IT);
+	hit_kernel<<<blocks,1>>>(T->get_device_pointer(),F->get_device_pointer(),X->get_device_pointer(),Z->get_device_pointer(),T->size,NN,IT,d_aux_slice);
 	cudaError_t err = cudaGetLastError();
 		    if (err>0) printf("errors after HIT %d\n",err);
 }
 __global__ void hit_kernel(LongPointer d_t, LongPointer d_f,LongPointer d_x,LongPointer d_z ,
-		unsigned int size,unsigned int NN, unsigned int IT)//<<<NN,1>>>
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)//<<<NN,1>>>
 {
-	hit(d_t,d_f,d_x,d_z,size,NN,IT);
+	hit(d_t,d_f,d_x,d_z,size,NN,IT,aux_slice);
 }
 
 __device__ void hit(LongPointer d_t, LongPointer d_f,LongPointer d_x,LongPointer d_z ,
-		unsigned int size,unsigned int NN, unsigned int IT)
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
 	LongPointer d_b=&aux_slice[0];
 	LongPointer d_y=&aux_slice[NN];
@@ -389,19 +397,19 @@ void ADDV(Table *T, Table *F, Slice *X, Table *S)
 	IT=X->IT;
 	blocks=X->blocks;
 	Slice B(X->length);
-	addv_kernel<<<blocks,1,NN*AUX_COUNT*sizeof(unsigned long long int)>>>(T->get_device_pointer(),F->get_device_pointer(),X->get_device_pointer(),S->get_device_pointer(),B.get_device_pointer(),T->size,NN,IT);
+	addv_kernel<<<blocks,1>>>(T->get_device_pointer(),F->get_device_pointer(),X->get_device_pointer(),S->get_device_pointer(),B.get_device_pointer(),T->size,NN,IT,d_aux_slice);
 	if(B.SOME()) puts("ADDV: size error");
 	cudaError_t err = cudaGetLastError();
 			    if (err>0) printf("errors after ADDV %d\n",err);
 }
 __global__ void addv_kernel(LongPointer d_t,LongPointer d_r,LongPointer d_x,LongPointer d_s,LongPointer d_b,
-				unsigned int size,unsigned int NN, unsigned int IT)//<<<NN,1>>>
+				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)//<<<NN,1>>>
 {
-	addv(d_t,d_r,d_x,d_s,d_b,size,NN,IT);
+	addv(d_t,d_r,d_x,d_s,d_b,size,NN,IT,aux_slice);
 }
 
 __device__ void addv(LongPointer d_t,LongPointer d_f,LongPointer d_x,LongPointer d_s,LongPointer d_b,
-				unsigned int size,unsigned int NN, unsigned int IT)
+				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
 	LongPointer d_y=&aux_slice[0];
 	LongPointer d_z=&aux_slice[NN];
@@ -434,19 +442,19 @@ void ADDC(Table *T, Slice *w, Slice *X, Table *S)
 	IT=X->IT;
 	blocks=X->blocks;
 	Slice B(X->length);
-	addc_kernel<<<blocks,1,NN*AUX_COUNT*sizeof(unsigned long long int)>>>(T->get_device_pointer(),w->get_device_pointer(),X->get_device_pointer(),S->get_device_pointer(),B.get_device_pointer(),T->size,NN,IT);
+	addc_kernel<<<blocks,1>>>(T->get_device_pointer(),w->get_device_pointer(),X->get_device_pointer(),S->get_device_pointer(),B.get_device_pointer(),T->size,NN,IT,d_aux_slice);
 	if(B.SOME()) puts("ADDC: size error");
 	cudaError_t err = cudaGetLastError();
 				    if (err>0) printf("errors after ADDC %d\n",err);
 }
 __global__ void addc_kernel(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_s,LongPointer d_b,
-				unsigned int size,unsigned int NN, unsigned int IT)
+				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
-	addc(d_t,d_w,d_x,d_s,d_b,size,NN,IT);
+	addc(d_t,d_w,d_x,d_s,d_b,size,NN,IT,aux_slice);
 }
 
 __device__ void addc(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_s,LongPointer d_b,
-				unsigned int size,unsigned int NN, unsigned int IT)
+				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
 	LongPointer d_y=&aux_slice[0];
 	LongPointer d_m=&aux_slice[NN];
@@ -481,23 +489,24 @@ void ADDC1(Table *T, Slice *w, Slice *X)
 	blocks=X->blocks;
 	Slice B(X->length);
 //	printf("addc1 \n sz=%i NN=%i lg=%i\n",T->size,NN,T->length);
-	addc1_kernel<<<blocks,1,NN*AUX_COUNT*sizeof(unsigned long long int)>>>(T->get_device_pointer(),w->get_device_pointer(),X->get_device_pointer(),B.get_device_pointer(),T->size,NN,IT);
-	if(B.SOME())
+	addc1_kernel<<<blocks,1>>>(T->get_device_pointer(),w->get_device_pointer(),X->get_device_pointer(),B.get_device_pointer(),T->size,NN,IT,d_aux_slice);
+/*	if(B.SOME())
 	{
 		puts("ADDC1: size error");
 //		B.print("ADDC1");
 	}
+	*/
 	cudaError_t err = cudaGetLastError();
 				    if (err>0) printf("errors after ADDC1 %d\n",err);
 }
 __global__ void addc1_kernel(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_b,
-				unsigned int size,unsigned int NN, unsigned int IT)
+				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
-	addc1(d_t,d_w,d_x,d_b,size,NN,IT);
+	addc1(d_t,d_w,d_x,d_b,size,NN,IT,aux_slice);
 }
 
 __device__ void addc1(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_b,
-				unsigned int size,unsigned int NN, unsigned int IT)
+				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
 	LongPointer d_y=&aux_slice[0];
 	LongPointer d_m=&aux_slice[NN];

@@ -4,7 +4,7 @@
  *  библиотека содержит реализацию функций на устройстве
  */
 #define MAX_THREADS 1024
-#define MAX_BLOCK 2048
+#define MAX_BLOCK 32
 #define SIZE_OF_LONG_INT 64
 
 typedef unsigned long long int *LongPointer;

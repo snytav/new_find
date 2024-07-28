@@ -15,7 +15,7 @@ public:
    LongPointer get_device_pointer(){return d_v;}
 //  unsigned int get_block_count(){return blocks;}
    Slice(unsigned int k);
-
+   ~Slice();
    void ASSIGN(Slice *X);
    void AND(Slice *X);
    void OR(Slice *X);

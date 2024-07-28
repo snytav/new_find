@@ -17,14 +17,24 @@ Table::Table(unsigned int k,unsigned int s)
     size=s;
     cudaMalloc(&d_v,s*NN*sizeof(unsigned long long int));
     }
+
+Table::~Table()
+{
+	    cudaFree(d_v);
+    }
+
 void Table::GetCol(Slice* X,unsigned int i)
 {
 	assign_kernel<<<blocks,1>>>( X->get_device_pointer(),&(d_v[(i-1)*NN]),NN,IT);
+	cudaError_t err = cudaGetLastError();
+	    if (err>0) printf("errors after getRow %d\n",err);
 }
 
 void Table::SetCol(Slice* X,unsigned int i)
 {
 	assign_kernel<<<blocks,1>>>(&(d_v[(i-1)*NN]), X->get_device_pointer(),NN,IT);
+	cudaError_t err = cudaGetLastError();
+	    if (err>0) printf("errors after setCol %i %d\n",i,err);
 }
 
 __device__ void _getCol(LongPointer d_table, LongPointer d_slice,unsigned int i,
@@ -82,6 +92,8 @@ void Table::SetRow(Slice* X,unsigned int i)
     threads = min(MAX_THREADS,size);
     it=(size-1)/threads+1;
 	setRow_kernel<<<1,threads>>>(d_v,i,X->get_device_pointer(),size,NN,it);
+	cudaError_t err = cudaGetLastError();
+    if (err>0) printf("errors after setRow %i, %d\n",i,err);
 }
 
 __global__ void getRow_kernel1(LongPointer p,int n,LongPointer d_v, int size,unsigned NN,unsigned int IT)
@@ -131,6 +143,8 @@ void Table::GetRow1(Slice* X,unsigned int i)
     threads = min(MAX_THREADS,NN);
     it=(size-1)/threads+1;
 	getRow_kernel1<<<1,threads>>>(d_v,i,X->get_device_pointer(),size,NN,it);
+	cudaError_t err = cudaGetLastError();
+	if (err>0) printf("errors after getRow1 %d\n",err);
 }
 
 __global__ void getRow_kernel(LongPointer p,int n,LongPointer d_v, int size,unsigned NN,unsigned int IT)
@@ -194,6 +208,8 @@ void Table::GetRow(Slice* X,unsigned int i)
 //    printf("GetRow1 %d %d it=%d\n",size,blocks,it);
 
 	getRow_kernel<<<blocks,SIZE_OF_LONG_INT>>>(d_v,i,X->get_device_pointer(),size,NN,it);
+	cudaError_t err = cudaGetLastError();
+	if (err>0) printf("errors after getRow %i, %d\n",i,err);
 }
 
 __global__ void print_block_kernel(LongPointer d_v,char *d_str,unsigned int length,unsigned int size,unsigned int IT)

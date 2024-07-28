@@ -4,6 +4,7 @@
 #include "table.h"
 
 #define AUX_COUNT 3
+int InitAuxSlices(unsigned  int NN);
 
 // для использования в I группе, конфигурация ядра <<<1,threads>>>
 // нужна синхронизация по всем потокам
@@ -14,13 +15,14 @@ __device__ bool some(LongPointer d_y,unsigned int length,unsigned int NN, unsign
 * нужна синхронизация по всем потокам
 * использует вспомогательный слайс
 */
+/*
 void MIN(Table *T, Slice *X, Slice*Z);
 __global__ void min_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_z,
 		unsigned int length, unsigned int size,unsigned int NN, unsigned int IT);
-
+*/
 void MAX(Table *T, Slice *X, Slice*Z);
 __global__ void max_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_z,
-		unsigned int length, unsigned int size,unsigned int NN, unsigned int IT);
+		unsigned int length, unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 /*
 *---------------------------- II группа алгоритмов--------------------------------
 * конфигурация ядра <<<blocks,1,NN*AUX_COUNT*sizeof(unsigned long long int)>>>
@@ -28,45 +30,45 @@ __global__ void max_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_z,
 */
 void MATCH(Table *tab, Slice *X, Slice *w, Slice *Z);
 __global__ void match_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_w,LongPointer d_z,
-		unsigned int size,unsigned int NN, unsigned int IT);//<<<NN,1>>>
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);//<<<NN,1>>>
 __device__ void match(LongPointer d_tab,LongPointer d_x,LongPointer d_w,LongPointer d_z,
-		unsigned int size,unsigned int NN, unsigned int IT);
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 
 void GEL(Table *tab, Slice *w, Slice *X, Slice *Y);
 __global__ void gel_kernel(LongPointer d_tab, LongPointer d_w,LongPointer d_x,LongPointer d_y,
-		unsigned int size,unsigned int NN, unsigned int IT);
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 __device__ void gel(LongPointer d_tab, LongPointer d_w,LongPointer d_x,LongPointer d_y,
-		unsigned int size,unsigned int NN, unsigned int IT);
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 
 void LESS(Table *T, Slice *X, Slice *v,Slice *Y);
 __global__ void less_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_v,LongPointer d_y,
-		unsigned int size,unsigned int NN, unsigned int IT);
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 __device__ void less(LongPointer d_tab,LongPointer d_x,LongPointer d_v,LongPointer d_y,
-		unsigned int size,unsigned int NN, unsigned int IT);
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 
 void GREAT(Table *T, Slice *X, Slice *v,Slice *Y);
 __global__ void great_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_v,LongPointer d_y,
-		unsigned int size,unsigned int NN, unsigned int IT);//<<<NN,1>>>
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);//<<<NN,1>>>
 __device__ void great(LongPointer d_tab,LongPointer d_x,LongPointer d_v,LongPointer d_y,
-		unsigned int size,unsigned int NN, unsigned int IT);
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 
 void SETMIN(Table *T, Table *F, Slice *X, Slice *Z);
 __global__ void setmin_kernel(LongPointer d_t, LongPointer d_f,LongPointer d_x,LongPointer d_z ,
-		unsigned int size,unsigned int NN, unsigned int IT);//<<<NN,1>>>
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);//<<<NN,1>>>
 __device__ void setmin(LongPointer d_t, LongPointer d_f,LongPointer d_x,LongPointer d_z ,
-		unsigned int size,unsigned int NN, unsigned int IT);
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 
 void SETMAX(Table *T, Table *F, Slice *X, Slice *Z);
 __global__ void setmax_kernel(LongPointer d_t, LongPointer d_f,LongPointer d_x,LongPointer d_z ,
-		unsigned int size,unsigned int NN, unsigned int IT);//<<<NN,1>>>
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);//<<<NN,1>>>
 __device__ void setmax(LongPointer d_t, LongPointer d_f,LongPointer d_x,LongPointer d_z ,
-		unsigned int size,unsigned int NN, unsigned int IT);
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 
 void HIT(Table *T, Table *F, Slice *X, Slice *Z);
 __global__ void hit_kernel(LongPointer d_t, LongPointer d_f,LongPointer d_x,LongPointer d_z ,
-		unsigned int size,unsigned int NN, unsigned int IT);//<<<NN,1>>>
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);//<<<NN,1>>>
 __device__ void hit(LongPointer d_t, LongPointer d_f,LongPointer d_x,LongPointer d_z ,
-		unsigned int size,unsigned int NN, unsigned int IT);
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 
 //---------------------------- IV группа алгоритмов--------------------------------
 void CLEAR(Table *T);
@@ -109,29 +111,26 @@ __global__ void tcopy4_kernel(LongPointer *d_t, int j,int h, LongPointer *d_f);/
 __device__ void tcopy4(LongPointer *d_t, int j, int h, LongPointer *d_f);
 */
 //---------------------------- III группа алгоритмов--------------------------------
+
 void ADDV(Table *T, Table *R, Slice *X, Table *S);
 __global__ void addv_kernel(LongPointer d_t,LongPointer d_r,LongPointer d_x,LongPointer d_s,LongPointer d_b,
-				unsigned int size,unsigned int NN, unsigned int IT);//<<<NN,1>>>
+				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);//<<<NN,1>>>
 //d_b перенос на предыдущий разряд
 __device__ void addv(LongPointer d_t,LongPointer d_r,LongPointer d_x,LongPointer d_s,LongPointer d_b,
-				unsigned int size,unsigned int NN, unsigned int IT);
+				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 
 void ADDC(Table *T, Slice *w, Slice *X, Table *S);
 __global__ void addc_kernel(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_s,LongPointer d_b,
-				unsigned int size,unsigned int NN, unsigned int IT);
+				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 __device__ void addc(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_s,LongPointer d_b,
-				unsigned int size,unsigned int NN, unsigned int IT);
+				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 
 void ADDC1(Table *T, Slice *w, Slice *X);
 __global__ void addc1_kernel(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_b,
-				unsigned int size,unsigned int NN, unsigned int IT);
+				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 __device__ void addc1(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_b,
-				unsigned int size,unsigned int NN, unsigned int IT);
+				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 /*
-int ADDC1( Slice *X, Slice *w, Table *S);
-__global__ void addc1_kernel(unsigned long long int *d_x,unsigned long long int *d_w,int h,LongPointer *d_s,unsigned long long int *d_b);
-__device__ void addc1(unsigned long long int *d_x, unsigned long long int *d_w,int h,LongPointer *d_s,unsigned long long int *d_b);
-
 void SUBTV(Table *T, Table *R, Slice *X,Table *S);
 __global__ void subtv_kernel(LongPointer *d_t, LongPointer *d_r,int k, unsigned long long int *d_x, LongPointer *d_s,unsigned long long int *d_m);
 __device__ void subtv(LongPointer *d_t, LongPointer *d_r,int k, unsigned long long int *d_x, LongPointer *d_s,unsigned long long int *d_m);

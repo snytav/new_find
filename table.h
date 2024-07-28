@@ -13,6 +13,7 @@ public:
    LongPointer get_device_pointer(){return d_v;}
 //  unsigned int get_block_count(){return blocks;}
    Table(unsigned int l,unsigned int s);
+   ~Table();
    void GetCol(Slice* X,unsigned int i);
    void SetCol(Slice* X,unsigned int i);
    void GetRow(Slice* X,unsigned int i);
