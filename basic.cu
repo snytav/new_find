@@ -1,8 +1,6 @@
 #include "basic.h"
 #include <stdio.h>
 
-// память для AUX_CONT вспомогательных слайсов
-//extern __shared__ unsigned long long int aux_slice[];
 LongPointer d_aux_slice;
 
 int InitAuxSlices(unsigned  int NN)
@@ -538,6 +536,66 @@ __device__ void addc1(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointe
 	   }
 }
 
+
+void ADDROW(Table *T, Table *R, unsigned int i, Slice *X)
+{
+	unsigned int NN, IT,blocks;
+	NN=X->NN;
+	IT=X->IT;
+	blocks=X->blocks;
+	Slice B(X->length);
+//	printf("addc1 \n sz=%i NN=%i lg=%i\n",T->size,NN,T->length);
+	addrow_kernel<<<blocks,1>>>(T->get_device_pointer(),R->get_device_pointer(),i,X->get_device_pointer(),B.get_device_pointer(),T->size,NN,R->NN,IT,d_aux_slice);
+/*	if(B.SOME())
+	{
+		puts("ADDC1: size error");
+//		B.print("ADDC1");
+	}
+	*/
+	cudaError_t err = cudaGetLastError();
+				    if (err>0) printf("errors after ADDC1 %d\n",err);
+}
+
+__global__ void addrow_kernel(LongPointer d_t,LongPointer d_r,unsigned int i,LongPointer d_x,LongPointer d_b,
+				unsigned int size,unsigned int NN,unsigned int NN2, unsigned int IT,LongPointer aux_slice)
+{
+	addrow(d_t,d_r,i,d_x,d_b,size,NN,NN2,IT,aux_slice);
+}
+//d_b перенос на предыдущий разряд
+__device__ void addrow(LongPointer d_t,LongPointer d_r,unsigned int j,LongPointer d_x,LongPointer d_b,
+		unsigned int size,unsigned int NN,unsigned int NN2, unsigned int IT,LongPointer aux_slice)
+{
+	LongPointer d_y=&aux_slice[0];
+	LongPointer d_m=&aux_slice[NN];
+	LongPointer d_col=&aux_slice[2*NN];
+	LongPointer d_col1;
+//	unsigned int vol;
+
+	  _clr(d_b,NN,IT);
+	  for (unsigned int i=size;i>0;i--)
+	  {
+		  _getCol(d_t,d_y,i,NN,IT);
+		  _assign(d_m,d_b,NN,IT);
+		  _xor(d_m,d_y,NN,IT);
+		  d_col1=&(d_r[(i-1)*NN2]);
+	      if (_getbit(d_col1,j)==0)
+	      {
+	    	  _and(d_b,d_y,NN,IT);
+	      }
+	      else
+	      {
+	    	  _not(d_m,NN,IT);
+	    	  _or(d_b,d_y,NN,IT);
+	      }
+	      _and(d_m,d_x,NN,IT);
+	      _assign(d_col,d_x,NN,IT);
+	      _not(d_col,NN,IT);
+	      _and(d_col,d_y,NN,IT);
+	      _or(d_col,d_m,NN,IT);
+	      _setCol(d_t,d_col,i,NN,IT);
+	      _and(d_b,d_x,NN,IT);
+	   }
+}
 void CLEAR(Table *T)
 {
 	unsigned int NN, IT,blocks,sz;
@@ -547,7 +605,7 @@ void CLEAR(Table *T)
 	sz=min(MAX_THREADS,T->size);
 	clear_kernel<<<blocks,sz>>>(T->get_device_pointer(),T->size,NN,IT);
 }
-__global__ void clear_kernel(LongPointer d_v,unsigned int size,unsigned int NN, unsigned int IT)
+__global__ void  clear_kernel(LongPointer d_v,unsigned int size,unsigned int NN, unsigned int IT)
 {
 	clear(d_v,size,NN,IT);
 }
@@ -559,6 +617,31 @@ __device__ void clear(LongPointer d_v,unsigned int size,unsigned int NN, unsigne
 	{
 		for(int i=0; i<it;i++)
 			if ((index+i<NN)&&(col_numb<size)) d_v[col_numb*NN+index+i] =0;
+		size-=blockDim.x;
+		col_numb+=blockDim.x;
+	}
+}
+void TCOPY(Table *T, Table *F)
+{
+	unsigned int NN, IT,blocks,sz;
+	NN=T->NN;
+	IT=T->IT;
+	blocks=T->blocks;
+	sz=min(MAX_THREADS,T->size);
+	tcopy_kernel<<<blocks,sz>>>(T->get_device_pointer(),F->get_device_pointer(),T->size,NN,IT);
+}
+__global__ void  tcopy_kernel(LongPointer d_t, LongPointer d_f,unsigned int size,unsigned int NN, unsigned int IT)
+{
+	tcopy(d_t,d_f,size,NN,IT);
+}
+__device__ void tcopy(LongPointer d_t, LongPointer d_f,unsigned int size,unsigned int NN, unsigned int it)
+{
+	unsigned int index=blockIdx.x*it;
+	unsigned int col_numb=threadIdx.x;
+	while(size>= blockDim.x)
+	{
+		for(int i=0; i<it;i++)
+			if ((index+i<NN)&&(col_numb<size)) d_f[col_numb*NN+index+i] =d_t[col_numb*NN+index+i];
 		size-=blockDim.x;
 		col_numb+=blockDim.x;
 	}

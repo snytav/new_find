@@ -29,12 +29,13 @@ __global__ void init_stable(LongPointer d_T,unsigned int NN1,unsigned int size)
 }
 // для заданного числа n генерирует масив весов от 1 до WMAX и массив стоимости от 1 до CMAX
 void problem_generate(int n, int *w, int *c)
-{   srand( time(0));
+{   srand( time(NULL));
 	int i;
 	for (i=0;i<n; i++)
 	{
 		w[i]=rand()%WMAX+1;
 		c[i]=rand()%CMAX+1;
+		printf("<%i:%d,%d> ",i+1,w[i],c[i]);
 	}
 }
 
@@ -106,42 +107,68 @@ void branch_cut(int n, int *w, int W, int &k_t, int &k_b)
    	 puts("");
 
 }
+
+void sort(int *first,int *second, unsigned int size)
+{	int tmp;
+	for(unsigned int i=0;i<size-1;i++)
+		for(unsigned int j=i+1;j<size;j++)
+		 if (first[i]>first[j])
+		 {
+			tmp=first[i];
+			first[i]=first[j];
+			first[j]=tmp;
+
+			tmp=second[i];
+			second[i]=second[j];
+			second[j]=tmp;
+		 }
+}
+
 //количество предметов
 #define M 32
 //количество бит для максимального веса и цены
 #define N_K 16
+// МЕДЛЕННЕЕ В 2 РАЗА!
+__global__ void weightssumm(LongPointer d_t,LongPointer d_y, LongPointer d_wt,LongPointer d_ww,LongPointer d_ct, LongPointer d_cc, LongPointer d_wmax, LongPointer d_z3, LongPointer d_z,unsigned int size,unsigned int NNT,unsigned int NNR, unsigned int IT,LongPointer aux_slice)
+{unsigned int i;
+for(i=1;i<=size;i++)
+	{
+
+  // T.GetCol(&Y,i);
+   _getCol(d_t,d_y,i,NNT,IT);
+//    ADDROW(&WT,&WW,i,&Y);
+    addrow(d_wt,d_ww,i,d_y,d_z,size,NNT,NNR,IT,aux_slice);
+//     ADDROW(&CT,&CC,i,&Y);
+    addrow(d_ct,d_cc,i,d_y,d_z,size,NNT,NNR,IT,aux_slice);
+	}
+//LESS(&WT,&Z3,&w_max,&Z);
+less(d_wt,d_z3,d_wmax,d_z,size,NNT,IT,aux_slice);
+}
 
 void knapsack_exp()
-{   puts("knapsack 0");
-	unsigned int N1,sz=M,lth;
+{
+	unsigned int sz=M,lth;
 //	lth=powl(2,sz);
 	lth=64*2048;//powl(2,sz);
 	int
-//unsorted
-/*	w[M]{80,65,83,53,41,48,98,17,81,64,22,91,54,32,63,59,2,70,97,68,67,70,9,62,79,
-		73,69,47,46,78,9,54},
-	c[M]{972,276,822,732,793,582,942,346,642,33,592,96,931,356,731,995,424,736,75,389,
-			867,117,586,341,677,552,863,622,679,60,88,462}
-*/
-//sorted
-	w[M]{98,97,	91,	83,81,80,79,78,73,70,70,69,68,67,65,64,63,62,59,54,54,53,48,47,46,
-		41,32,22,17,9,9,2},
-	c[M]{942,75,96,822,642,972,677,60,552,736,117,863,389,867,276,33,731,341,995,931,
-		462,732,582,622,679,793,356,592,346,586,88,424}
+	w[M],c[M],W,k_b,k_t,i,j,nn;//,W_t=0,W_b=0;
 
-	,W{1511},k_b,k_t,i,j,W_t=0,W_b=0;
+	Slice ST(sz),SB(sz),ST1(sz),SB1(sz),X(lth),w_max(N_K),c_lmax(N_K),w_lmax(N_K),t_lmax(sz);
 
-	//problem_generate(M, w, c);
-//	W=rand()%(WMAX*M/2)+1;
+	Table WW(sz,N_K),CC(sz,N_K),T(lth,sz);
+	unsigned long long int nj,ns;//tmp,dig,
+	if (InitAuxSlices(T.NN)>0){puts(" InitAuxSlices error");}
+	double tt;
+    struct timeval tv1,tv2;
+    gettimeofday(&tv1,NULL);
+	Table WT(lth,N_K), CT(lth,N_K);
 
-	puts("knapsack 1");
-	Slice ST(sz),SB(sz),ST1(sz),SB1(sz),X(lth),w_max(N_K);
+	Slice  Y(lth),Z(lth),Z1(lth),Z2(lth),Z3(lth), SN(sz),TMP(sz),u(N_K),v(N_K);
+	FILE *f = fopen("res/time.txt", "w");
+	fprintf(f,"N\t W \t unsorted \t sorted by weight \t count only \t I \t II \t III \n");
 
-
-	Table WW(sz,N_K),CC(sz,N_K);
-	puts("WT new");
-	puts("Var");
-
+ 	Table WLast(lth,N_K), CLast(lth,N_K);
+ 	unsigned int klst;
 // ST Верхняя строка проверяемого
 // SB Нижняя строка проверяемого
 
@@ -149,36 +176,21 @@ void knapsack_exp()
 	// ST1 Верхняя строка проверяемого
 	// SB1 Нижняя строка проверяемого
 //
-
+ for (nn=0;nn<10;nn++)
+ {
+	printf("\n %d \n",nn);
+	problem_generate(M, w, c);
+	W=rand()%(WMAX*M/2)+1;
 	branch_cut(M, w,W,k_t,k_b);
 	branch_cut(M, w,W, &ST,&SB);
-	ST.print("st");
-	SB.print("sb");
+//	ST.print("st");
+//	SB.print("sb");
 
- //   ST->FromDigit(2569701075);// top bound
-  //  (1463011463)
-     //(264241151); //самый большой до падения на 3164 шаге
-
-	unsigned long long int tmp,dig;
-// print results branch_cut
-	for (i=0; i<sz;i++){
-//	  tmp=c[i]<<(64-32);
-//	  dig=__brevll(tmp); //переворот в правильную сторону для суммирования
-//		printf("<%i;%i> \n ",w[i],c[i]);
-		w_max.FromDigit(w[i]);
-		WW.SetRow(&w_max,i+1);
-		w_max.FromDigit(c[i]);
-		CC.SetRow(&w_max,i+1);
-	}
-     	w_max.FromDigit(W);
+	w_max.FromDigit(W);
 //		w_max->print("w_max",0);
-	printf("\n W=%i <>%i\n",W,w_max.ToDigit());
+	printf("W=%i \n",W);
 
-	Table T(lth,sz);
-//	unsigned long long int hostT[M][NN1];
-
-	puts("Init T");
-	printf("Размеры: size=%u length =%u, NN=%u IT=%u\n",T.size,T.length,T.NN,T.IT);
+	printf("Размеры: size=%u length =%u, Blocks=%u IT=%u\n",T.size,T.length,T.blocks,T.IT);
 	// инициализация таблицы перебора
 	// появление в ней sb - условие окончания перебора
 	init_stable<<<sz,1>>>(T.get_device_pointer(),T.NN,sz);
@@ -186,17 +198,6 @@ void knapsack_exp()
 //	T->writeToFile("log/init");
 	cudaError_t err = cudaGetLastError();
 	 printf("errors after init_stable %d\n",err);
-
-	double tt;
-    struct timeval tv1,tv2;
-    gettimeofday(&tv1,NULL);
-	Table WT(lth,N_K), CT(lth,N_K);
-
-
-	puts("WT new");
-
-	Slice  Y(lth),Z(lth),Z1(lth),Z2(lth),Z3(lth), SN(sz),TMP(sz),u(N_K),v(N_K);
-
 
     //вставить проверку, что ST<>SB, иначе тривиально.
     SN.ASSIGN(&ST);
@@ -209,138 +210,336 @@ void knapsack_exp()
     }
 
     T.GetRow(&SN,lth);
+//    SN.print("last");
+    i=SN.FND(); SN.CLR();
+    if (i>1) SN.setbit(i-1,1);
 //    SN.print("будем складывать");
     Z1.CLR();
     Z2.SET();
     Z3.SET();
     ADDC1(&T,&ST,&Z3);
- //   T.GetRow(&TMP,1);
-//    TMP.print("верхняя строка");
- //   T.GetRow(&TMP,lth);
- //   TMP.print("нижняя строка");
-    Z2.setbit(1,0);
-//    TMP->FromDigit(2533359615);//last maximum
-//    T->SetRow(TMP,1);
+    c_lmax.CLR();
 
+
+//    Z2.setbit(1,0);// в этом варианте мах храним не в таблице
+
+    ST.print("unsorted ST");
+ //   SN.print("log/SN");
+    SB.print("insorted SB");
+    ns=SN.ToDigit();
+    nj=ST.ToDigit();
+    fprintf(f,"%d\t W=%d \t %llu \t",nn, W,SB.ToDigit()-nj);
+ /*/ сортировка по стоимости
+    sort(c,w,sz);
+    branch_cut(M, w,W, &ST,&SB);
     ST.print("log/ST");
-    SN.print("log/SN");
     SB.print("log/SB");
-    printf("SN=%llu, ST=%llu, SB=%llu \n",SN.ToDigit(),ST.ToDigit(),SB.ToDigit());
+    nj=ST.ToDigit();
+    printf("Sorted by cost W=%d SN=%llu, ST=%llu, SB=%llu: %llu \n",W,ns,nj,SB.ToDigit(),SB.ToDigit()-nj);
+ */
+    // сортировка по весу
+    sort(w,c,sz);
+    branch_cut(M, w,W, &ST,&SB);
+    ST.print("sorted ST");
+    SB.print("sorted SB");
+    nj=ST.ToDigit();
+    fprintf(f," %llu \t",SB.ToDigit()-nj);
+
+    // print results branch_cut
+    	for (i=0; i<sz;i++){
+    		w_max.FromDigit(w[i]);
+    		WW.SetRow(&w_max,i+1);
+    		w_max.FromDigit(c[i]);
+    		CC.SetRow(&w_max,i+1);
+    	}
+    	w_max.FromDigit(W);
     //вставить проверку, что ST<>SB, иначе тривиально.
 
 
-    printf("Начинаем перебор \n");
+//    printf("Перебор без вычислений \n");
+    gettimeofday(&tv1,NULL);
     j=0;
-
-//Z1->print("Z1",0);
-  //  while (Z1.ZERO())
+    while(Z1.ZERO())
     {
 
-  // проверка диапазона
-    	if ((j>3000))  printf("проверка диапазона %i\n",j);
         MATCH(&T,&Z3,&SB,&Z1);// тут должен быть h=H1
- //       Z1.print("Pos_SB");
- //       printf("%i \n",Z1->FND1());
- //       puts("MATCH");
-        if ((j>3000))       puts("CLEAR(WT)");
-    	CLEAR(&WT); // тут должен быть h=N_K
-    	if ((j>3000))   	puts("CLEAR(CT)");
-    	CLEAR(&CT); // тут должен быть h=N_K
-//       puts("Clear WT and CT");
-       for(i=1;i<=sz;i++)
-    	{
-          WW.GetRow(&v,i);
-          if ((j>3000)) printf(" W.GetRow[%i]\n ",i);
-          CC.GetRow(&u,i);
-          if ((j>3000)) printf(" C.GetRow[%i]\n ",i);
- //         u.print("u");
- //         printf(" i=%i w=%i c=%i  \n",i,v.ToDigit(),u.ToDigit());
-          T.GetCol(&Y,i);
-  //        Y.print("Y");
-          if ((j>3000)) printf(" T.GetCOL[%i]\n ",i);
-          ADDC1(&WT,&v,&Y);
-          if ((j>3000)) printf(" ADDC W\n ");
-          ADDC1(&CT,&u,&Y);
-          if ((j>3000)) printf(" ADDC C\n ");
-
-          CT.GetRow(&u,2);
-          WT.GetRow(&v,2);
- //         printf("2:j=%i weight sum= %i, another summ = %i \n",i, v.ToDigit(),u.ToDigit());
-    	}
-
-       LESS(&WT,&Z3,&w_max,&Z);
- //      Z.print("LESS");
-       if (j>3000)      puts("Less");
- //      CT->writeToFile("\log\CT.dat");
-       MAX(&CT,&Z,&X);
-//       X.print("MAX_X");
-       if ((j>3000))      puts("MAX");
-       i=X.FND();
-//       printf("max=%i\n",i);
-       if (i>1)// смена максимума
-       {
-
-          T.GetRow(&TMP,i);
-          T.SetRow(&TMP,1);
-    //      row(1,CT)=row(i,CT);//необязательно, посчитается на следующем шаге
-     //     row(1,WT)=row(i,WT);
-          CT.GetRow(&u,1);
-          printf("max changes %i %i last c=%i ",j,i,u.ToDigit());
-          CT.GetRow(&u,i);
-          CT.SetRow(&u,1);
-          WT.GetRow(&v,i);
-          WT.SetRow(&v,1);
-   //       CT->GetRow(u,i);
-   //       u->print("max",0);
-          printf(" w=%i c=%i %llu \n",v.ToDigit(),u.ToDigit(),TMP.ToDigit());
-          TMP.print("change");
-       }
-
- //      puts("max changes");
-
-       if ((j%100==0)|| (j>3000)){
-
-           T.GetRow(&TMP,lth);
-           printf(" %i: TMP=%llu \n ",j,TMP.ToDigit());
-
-           gettimeofday(&tv2,NULL);
-          	 tt=0.000001*(tv2.tv_usec-tv1.tv_usec)+(tv2.tv_sec-tv1.tv_sec);
-          	printf("time of all work %f sec \n", tt);
-          	 tv1=tv2;
- //          TMP->print("tmp",0);
-         }
-
- //     if (Z1.ZERO())
-       {
-  //    puts("next step");
-    	   ADDC1(&T,&SN,&Z2); // к первой строке не добавляется, там максимум
-    	   if (j>3000) puts("next step");
-       }
-
        j++;
-
+       nj+=ns;
+    	   ADDC1(&T,&SN,&Z3); // к первой строке не добавляется, там максимум
     }
-
-     err = cudaGetLastError();
-     printf("after init search table %d , %s \n",err,cudaGetErrorString(err));
 
      gettimeofday(&tv2,NULL);
 	 tt=0.000001*(tv2.tv_usec-tv1.tv_usec)+(tv2.tv_sec-tv1.tv_sec);
+	 fprintf(f,"%f.2 \t", tt);
+	 /****************************************************************************/
 
-	 T.GetRow(&ST1,2);
-	 ST1.print("nextST");
-	 T.GetRow(&SB1,lth);
-	 SB1.print("nextSB");
-	 T.GetRow(&ST1,1);
-	 ST1.print("MAX");
-	 CT.GetRow(&u,1);
-	 WT.GetRow(&v,1);
-	 printf("Max=%llu, NextSB=%llu \n",ST1.ToDigit(),SB1.ToDigit());
-//	 printf("j=%i weight sum= %i, cost summ = %i \n",j, v.ToDigit(),u.ToDigit());
+	 gettimeofday(&tv1,NULL);
+	init_stable<<<sz,1>>>(T.get_device_pointer(),T.NN,sz);
+    Z1.CLR();
+    Z2.SET();
+    Z3.SET();
+    ADDC1(&T,&ST,&Z3);
+    c_lmax.CLR();
+    j=0;
 
+//Z1->print("Z1",0);
+    while(Z1.ZERO())//&&(j<10))
+    {
+        MATCH(&T,&Z3,&SB,&Z1);// тут должен быть h=H1
+    	CLEAR(&WT); // тут должен быть h=N_K
+    	CLEAR(&CT); // тут должен быть h=N_K
+       for(i=1;i<=sz;i++)
+    	{
+           T.GetCol(&Y,i);
+          ADDROW(&WT,&WW,i,&Y);
+          ADDROW(&CT,&CC,i,&Y);
+     	  err = cudaGetLastError();
+          if (err>0)
+          {
+              printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+              return;
+   		  }
+        }
 
-	 printf("time of all work seq %f sec \n", tt);
+        LESS(&WT,&Z3,&w_max,&Z);
+        GREAT(&CT,&Z,&c_lmax,&Z2);
 
-//	sprintf(str, "res/NP/test%d.txt",j);
-//	T->writeToFile("res/NP/test.txt");
+    	err = cudaGetLastError();
+    	if (err>0){
+    	  printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+    	  return;
+    			}
+       MAX(&CT,&Z2,&X);
+       i=X.FND();
+//       printf("max=%i\n",i);
+       if (i>0)// смена максимума
+       {
+          T.GetRow(&t_lmax,i);
+          CT.GetRow(&c_lmax,i);
+          WT.GetRow(&w_lmax,i);
+ //         t_lmax.print("local");
+ //         printf("j=%i i=%i C=%llu W=%llu\n",j,i,c_lmax.ToDigit(),w_lmax.ToDigit());
+       }
+       j++;
+       nj+=ns;
+
+   	   ADDC1(&T,&SN,&Z3);
+
+       err = cudaGetLastError();
+       if (err>0){
+            printf("after all %d , %s \n",err,cudaGetErrorString(err));
+            return;
+       }
+    }
+
+     gettimeofday(&tv2,NULL);
+	 tt=0.000001*(tv2.tv_usec-tv1.tv_usec)+(tv2.tv_sec-tv1.tv_sec);
+	 t_lmax.print("MAX");
+
+//	 printf("Max=%llu, NextSB=%llu \n",ST1.ToDigit(),SB1.ToDigit());
+	 printf("j=%i W=%d weight sum= %llu, cost summ = %llu \n",j,W, w_lmax.ToDigit(),c_lmax.ToDigit());
+
+	 fprintf(f,"%f.2 \t", tt);
+/****************************************************************/
+
+	 	gettimeofday(&tv1,NULL);
+		init_stable<<<sz,1>>>(T.get_device_pointer(),T.NN,sz);
+	    Z1.CLR();
+	    Z2.SET();
+	    Z3.SET();
+	    ADDC1(&T,&ST,&Z3);
+	    c_lmax.CLR();
+	    t_lmax.CLR();
+	//Z1->print("Z1",0);
+	    CLEAR(&WLast); // тут должен быть h=N_K
+	    CLEAR(&CLast);
+	    klst=SN.FND()+1;
+	    for(i=klst;i<=sz;i++)
+	    {
+	       T.GetCol(&Y,i);
+	       ADDROW(&WLast,&WW,i,&Y);
+	       ADDROW(&CLast,&CC,i,&Y);
+	       err = cudaGetLastError();
+	       if (err>0)
+	    	{
+	    	   printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+	    	   return;
+	    	}
+	     }
+	    j=0;
+
+	    while (Z1.ZERO())//&&(j<10))
+	    {
+	        MATCH(&T,&Z3,&SB,&Z1);// тут должен быть h=H1
+	        TCOPY(&WLast,&WT); // тут должен быть h=N_K
+	        TCOPY(&CLast,&CT); // тут должен быть h=N_K
+
+	       for(unsigned int i1=1;i1<klst;i1++)
+	    	{
+	           T.GetCol(&Y,i1);
+	          ADDROW(&WT,&WW,i1,&Y);
+	          ADDROW(&CT,&CC,i1,&Y);
+	     	  err = cudaGetLastError();
+	          if (err>0)
+	          {
+	              printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+	              return;
+	   		  }
+	        }
+
+	        LESS(&WT,&Z3,&w_max,&Z);
+	        GREAT(&CT,&Z,&c_lmax,&Z2);
+	    	err = cudaGetLastError();
+	    	if (err>0){
+	    	  printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+	    	  return;
+	    			}
+	       MAX(&CT,&Z2,&X);
+	       i=X.FND();
+//	       printf("max=%i\n",i);
+	       if (i>0)// смена максимума
+	       {
+	          T.GetRow(&t_lmax,i);
+	          CT.GetRow(&c_lmax,i);
+	          WT.GetRow(&w_lmax,i);
+//	          t_lmax.print("local");
+	 //         printf("j=%i i=%i C=%llu W=%llu\n",j,i,c_lmax.ToDigit(),w_lmax.ToDigit());
+	       }
+	       j++;
+	       nj+=ns;
+
+	   	   ADDC1(&T,&SN,&Z3);
+
+	       err = cudaGetLastError();
+	       if (err>0){
+	            printf("after all %d , %s \n",err,cudaGetErrorString(err));
+	            return;
+	       }
+	    }
+
+	     gettimeofday(&tv2,NULL);
+		 tt=0.000001*(tv2.tv_usec-tv1.tv_usec)+(tv2.tv_sec-tv1.tv_sec);
+
+		 t_lmax.print("MAX");
+
+//		 printf("Max=%llu, NextSB=%llu \n",ST1.ToDigit(),SB1.ToDigit());
+		 printf("j=%i W=%i weight sum= %llu, cost summ = %llu \n",j,W, w_lmax.ToDigit(),c_lmax.ToDigit());
+
+		 fprintf(f,"%f.2 \t", tt);
+/********************************************************************/
+
+		 	gettimeofday(&tv1,NULL);
+			init_stable<<<sz,1>>>(T.get_device_pointer(),T.NN,sz);
+		    Z1.CLR();
+		    Z2.SET();
+		    Z3.SET();
+		    ADDC1(&T,&ST,&Z3);
+		    c_lmax.CLR();
+		    t_lmax.CLR();
+		    CLEAR(&WLast); // тут должен быть h=N_K
+		    CLEAR(&CLast);
+
+		    klst=SN.FND()+1;
+		    for(i=klst;i<=sz;i++)
+		    {
+		       T.GetCol(&Y,i);
+		       ADDROW(&WLast,&WW,i,&Y);
+		       ADDROW(&CLast,&CC,i,&Y);
+		       err = cudaGetLastError();
+		       if (err>0)
+		    	{
+		    	   printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+		    	   return;
+		    	}
+		     }
+		    j=0;
+//		    printf("klst=%d\n",klst);
+		    unsigned long long int cloc,wloc;
+		    while (Z1.ZERO())//&&(j<10))
+		    {
+		        MATCH(&T,&Z3,&SB,&Z1);// тут должен быть h=H1
+		        TCOPY(&WLast,&WT); // тут должен быть h=N_K
+		        TCOPY(&CLast,&CT); // тут должен быть h=N_K
+
+		        T.GetRow(&ST1,1);
+		        T.GetRow(&SB1,lth);
+//		        ST1.print("ST");
+//		        SB1.print("SB");
+		        TMP.ASSIGN(&ST1);
+		        TMP.XOR(&SB1);
+		        unsigned int i1=TMP.FND();
+		        cloc=0;wloc=0;
+		        TMP.ASSIGN(&ST1);
+  //  	        TMP.print("2 part");
+
+		        i=TMP.STEP();
+		        while ((i>0)&&(i<i1))
+		        {
+
+		        	cloc+=c[i-1];
+		        	wloc+=w[i-1];
+  //  	        	printf("<%i,%i> %d->%d %d->%d",j,i,c[i-1],cloc,w[i-1],wloc);
+		        	i=TMP.STEP();
+		        }
+		        u.FromDigit(cloc);
+		        ADDC1(&CT, &u,&Z3);
+		        u.FromDigit(wloc);
+		        ADDC1(&WT, &u,&Z3);
+
+		        i=i1;
+//		        printf("j=%i from %i to %i \n",j,i,klst-1);
+		       for(unsigned int i1=i;i1<klst;i1++)
+		    	{
+		           T.GetCol(&Y,i1);
+		          ADDROW(&WT,&WW,i1,&Y);
+		          ADDROW(&CT,&CC,i1,&Y);
+		     	  err = cudaGetLastError();
+		          if (err>0)
+		          {
+		              printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+		              return;
+		   		  }
+		        }
+
+		        LESS(&WT,&Z3,&w_max,&Z);
+		        GREAT(&CT,&Z,&c_lmax,&Z2);
+		    	err = cudaGetLastError();
+		    	if (err>0){
+		    	  printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+		    	  return;
+		    			}
+		       MAX(&CT,&Z2,&X);
+		       i=X.FND();
+	//	       printf("max=%i\n",i);
+		       if (i>0)// смена максимума
+		       {
+		          T.GetRow(&t_lmax,i);
+		          CT.GetRow(&c_lmax,i);
+		          WT.GetRow(&w_lmax,i);
+	//	          t_lmax.print("local");
+	//	          printf("j=%i i=%i C=%llu W=%llu\n",j,i,c_lmax.ToDigit(),w_lmax.ToDigit());
+		       }
+		       j++;
+		       nj+=ns;
+
+		   	   ADDC1(&T,&SN,&Z3);
+
+		       err = cudaGetLastError();
+		       if (err>0){
+		            printf("after all %d , %s \n",err,cudaGetErrorString(err));
+		            return;
+		       }
+		    }
+
+		     gettimeofday(&tv2,NULL);
+			 tt=0.000001*(tv2.tv_usec-tv1.tv_usec)+(tv2.tv_sec-tv1.tv_sec);
+
+			 t_lmax.print("MAX");
+
+			 printf("j=%i W=%i weight sum= %llu, cost summ = %llu \n",j,W, w_lmax.ToDigit(),c_lmax.ToDigit());
+
+			 fprintf(f,"%f.2  \n", tt);
+/*************************************************************/
+ }
+			 fclose(f);
 }

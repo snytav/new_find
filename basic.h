@@ -4,7 +4,10 @@
 #include "table.h"
 
 #define AUX_COUNT 3
+// память для AUX_CONT вспомогательных слайсов
+extern LongPointer d_aux_slice;
 int InitAuxSlices(unsigned  int NN);
+
 
 // для использования в I группе, конфигурация ядра <<<1,threads>>>
 // нужна синхронизация по всем потокам
@@ -32,6 +35,12 @@ void MATCH(Table *tab, Slice *X, Slice *w, Slice *Z);
 __global__ void match_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_w,LongPointer d_z,
 		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);//<<<NN,1>>>
 __device__ void match(LongPointer d_tab,LongPointer d_x,LongPointer d_w,LongPointer d_z,
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
+
+void MATCHROW(Table *tab, Slice *X, Table *w, unsigned int i, Slice *Z);
+__global__ void matchrow_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_w,unsigned int i,LongPointer d_z,
+		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);//<<<NN,1>>>
+__device__ void matchrow(LongPointer d_tab,LongPointer d_x,LongPointer d_w,unsigned int i,LongPointer d_z,
 		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 
 void GEL(Table *tab, Slice *w, Slice *X, Slice *Y);
@@ -74,6 +83,10 @@ __device__ void hit(LongPointer d_t, LongPointer d_f,LongPointer d_x,LongPointer
 void CLEAR(Table *T);
 __global__ void clear_kernel(LongPointer d_v,unsigned int size,unsigned int NN, unsigned int IT);
 __device__ void clear(LongPointer d_v,unsigned int size,unsigned int NN, unsigned int IT);
+
+void TCOPY(Table *T, Table *F);//F=T;
+__global__ void tcopy_kernel(LongPointer d_t, LongPointer d_f,unsigned int size,unsigned int NN, unsigned int IT);//<<<NN,k>>> k=1,...,r r=SIZE(T)
+__device__ void tcopy(LongPointer d_t, LongPointer d_f,unsigned int size,unsigned int NN, unsigned int IT);
 /*
 void TMERGE(Table *T,  Slice *X, Table *F, int k=1);
 __global__ void tmerge_kernel(LongPointer *d_t,unsigned long long int *d_x, LongPointer *d_f,int size);//<<<NN,k>>> k=1,...,M
@@ -88,10 +101,6 @@ __device__ void wmerge(unsigned long long int *d_v,unsigned long long int *d_x, 
 void WCOPY(Slice *v,  Slice *X, Table *F,int k=1);
 __global__ void wcopy_kernel(unsigned long long int *d_v,unsigned long long int *d_x, LongPointer *d_f,int k,int size);//<<<NN,k>>> k=1,...,M
 __device__ void wcopy(unsigned long long int *d_v,unsigned long long int *d_x, LongPointer *d_f,int k,int size);
-
-void TCOPY(Table *T, Table *F,int k=1);
-__global__ void tcopy_kernel(LongPointer *d_t, LongPointer *d_f,int size);//<<<NN,k>>> k=1,...,r r=SIZE(T)
-__device__ void tcopy(LongPointer *d_t, LongPointer *d_f,int size);
 
 void TCOPY1(Table *T,int j, int h, Table *F,int k=1);// Копирует вертикальную полосу из T в F
 __global__ void tcopy1_kernel(LongPointer *d_t, int j,int h, LongPointer *d_f);//<<<NN,k>>> k=1,...,h
@@ -130,6 +139,13 @@ __global__ void addc1_kernel(LongPointer d_t,LongPointer d_w,LongPointer d_x,Lon
 				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 __device__ void addc1(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_b,
 				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
+
+void ADDROW(Table *T, Table *R, unsigned int i, Slice *X);
+__global__ void addrow_kernel(LongPointer d_t,LongPointer d_r,unsigned int i,LongPointer d_x,LongPointer d_b,
+				unsigned int size,unsigned int NNT,unsigned int NNR, unsigned int IT,LongPointer aux_slice);//<<<NN,1>>>
+//d_b перенос на предыдущий разряд
+__device__ void addrow(LongPointer d_t,LongPointer d_r,unsigned int i,LongPointer d_x,LongPointer d_b,
+		unsigned int size,unsigned int NNT,unsigned int NNR, unsigned int IT,LongPointer aux_slice);
 /*
 void SUBTV(Table *T, Table *R, Slice *X,Table *S);
 __global__ void subtv_kernel(LongPointer *d_t, LongPointer *d_r,int k, unsigned long long int *d_x, LongPointer *d_s,unsigned long long int *d_m);

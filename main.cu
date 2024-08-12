@@ -9,10 +9,10 @@
 //#include "cuPrintf.cu"
 
 #include <cmath>
-#include "basic.h"
+//#include "basic.h"
 #include "NPproc.h"
 
-#define NN_MAX 2048
+#define NN_MAX 4096
 // 1536
 // AUX_COUNT 4 при большем числе попытка вызвать базовую процедуру выдает ошибку 11
 int main()
