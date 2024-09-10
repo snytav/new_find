@@ -10,7 +10,7 @@ __global__ void init_stable(LongPointer d_T,unsigned int NN1,unsigned int size)
 		   0xF0F0F0F0F0F0F0F0,0xFF00FF00FF00FF00,
 		   0xFFFF0000FFFF0000,0xFFFFFFFF00000000,
 		   0xFFFFFFFFFFFFFFFF,0};
-    unsigned long long int i,j=1,k;
+    unsigned long long int i, k,j=1;
     i=blockIdx.x;
     		{   d_t=&(d_T[(size-i-1)*NN1]);
     			if (i<6)
@@ -108,7 +108,23 @@ void branch_cut(int n, int *w, int W, int &k_t, int &k_b)
 
 }
 
-void sort(int *first,int *second, unsigned int size)
+void sortdown(int *first,int *second, unsigned int size)
+{	int tmp;
+	for(unsigned int i=0;i<size-1;i++)
+		for(unsigned int j=i+1;j<size;j++)
+		 if (first[i]<first[j])
+		 {
+			tmp=first[i];
+			first[i]=first[j];
+			first[j]=tmp;
+
+			tmp=second[i];
+			second[i]=second[j];
+			second[j]=tmp;
+		 }
+}
+
+void sortup(int *first,int *second, unsigned int size)
 {	int tmp;
 	for(unsigned int i=0;i<size-1;i++)
 		for(unsigned int j=i+1;j<size;j++)
@@ -123,7 +139,6 @@ void sort(int *first,int *second, unsigned int size)
 			second[j]=tmp;
 		 }
 }
-
 //количество предметов
 #define M 32
 //количество бит для максимального веса и цены
@@ -145,14 +160,406 @@ for(i=1;i<=size;i++)
 less(d_wt,d_z3,d_wmax,d_z,size,NNT,IT,aux_slice);
 }
 
+void complete_search(Table T, Slice ST,Slice SB, Slice SN)
+{
+	unsigned int sz=T.size;
+	unsigned int lth=T.length;
+	Slice Z1(lth),Z2(lth), Z3(lth),Y(lth);
+	Slice ST1(sz),SB1(sz),TMP(sz);
+	unsigned int i,m,l;
+    init_stable<<<sz,1>>>(T.get_device_pointer(),T.NN,sz);
+	    Z1.CLR();
+	    Z2.SET();
+	    Z3.SET();
+	    ADDC1(&T,&ST,&Z3);
+/*
+ *  инициализация переменных задачи
+ */
+	    l=SN.FND()+1;
+	    for(i=l;i<=sz;i++)
+	    {
+/*
+ *  вычисление данных по неизменным столбцам
+ */
+	     }
+
+	    while (Z1.ZERO())
+	    {
+//
+	        MATCH(&T,&Z3,&SB,&Z1);
+/*
+ *  копирование данных по неизменным столбцам
+ */
+	        T.GetRow(&ST1,1);
+	        T.GetRow(&SB1,lth);
+
+	        TMP.ASSIGN(&ST1);
+	        TMP.XOR(&SB1);
+	        m=TMP.FND();
+	        TMP.ASSIGN(&ST1);
+	        i=TMP.STEP();
+	        while ((i>0)&&(i<m))
+	        {
+/*
+ *   расчет по элементам, одинаковым во всех строках, на CPU
+ */
+	        	i=TMP.STEP();
+	        }
+
+/*
+ *   обновить данные на GPU
+ */
+	       for(i=m;i<l;i++)
+	    	{
+	           T.GetCol(&Y,i);
+/*
+ *   расчет по оставшимся столбцам
+ */
+	        }
+
+/*
+ *  обновление локального минимума/максимума
+ */
+	   	   ADDC1(&T,&SN,&Z3);
+	    }
+}
+
+void knapsack_optim(int *w,int *c,int W, Table T,int &w_res, int &c_res, Slice res)
+{  unsigned int sz=T.size,lth=T.length;
+unsigned long long int w0,w01,i,j,nn;//,W_t=0,W_b=0,k_b,k_t;
+unsigned long long int cloc,wloc,wlast,wlmin;
+Slice ST(sz),SB(sz),ST1(sz),SB1(sz),X(lth),w_max(N_K),c_lmax(N_K),w_lmax(N_K),t_lmax(sz);
+Table WW(sz,N_K),CC(sz,N_K);
+unsigned long long int nj,ns;//tmp,dig,
+Table WT(lth,N_K), CT(lth,N_K);
+	Table WLast(lth,N_K), CLast(lth,N_K);
+	unsigned int klst;
+bool change;
+
+Slice  Y(lth),Z(lth),Z1(lth),Z2(lth),Z3(lth), SN(sz),TMP(sz),u(N_K),v(N_K);
+cudaError_t err;
+    branch_cut(M, w,W, &ST,&SB);
+    ST.print("sorted ST");
+    SB.print("sorted SB");
+    nj=ST.ToDigit();
+    printf("count  %llu \n",SB.ToDigit()-nj);
+
+    // print results branch_cut
+    	for (i=0; i<sz;i++){
+    		w_max.FromDigit(w[i]);
+    		WW.SetRow(&w_max,i+1);
+    		w_max.FromDigit(c[i]);
+    		CC.SetRow(&w_max,i+1);
+//	    		printf("<%i:%i,%i> ",i+1,w[i],c[i]);
+    	}
+//	    	printf("\n");
+    	w_max.FromDigit(W);
+
+		init_stable<<<sz,1>>>(T.get_device_pointer(),T.NN,sz);
+	    Z1.CLR();
+	    Z2.SET();
+	    Z3.SET();
+	    ADDC1(&T,&ST,&Z3);
+	    c_lmax.CLR();
+	    t_lmax.CLR();
+	    CLEAR(&WLast); // тут должен быть h=N_K
+	    CLEAR(&CLast);
+
+	    klst=SN.FND()+1;
+	    for(i=klst;i<=sz;i++)
+	    {
+	       T.GetCol(&Y,i);
+	       ADDROW(&WLast,&WW,i,&Y);
+	       ADDROW(&CLast,&CC,i,&Y);
+	       err = cudaGetLastError();
+	       if (err>0)
+	    	{
+	    	   printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+	    	   return;
+	    	}
+	     }
+	    j=0;
+//		    printf("klst=%d\n",klst);
+
+	    while (Z1.ZERO())//&&(j<10))
+	    {
+	        MATCH(&T,&Z3,&SB,&Z1);// тут должен быть h=H1
+	        TCOPY(&WLast,&WT); // тут должен быть h=N_K
+	        TCOPY(&CLast,&CT); // тут должен быть h=N_K
+
+	        T.GetRow(&ST1,1);
+	        T.GetRow(&SB1,lth);
+//		        ST1.print("ST");
+//		        SB1.print("SB");
+	        TMP.ASSIGN(&ST1);
+	        TMP.XOR(&SB1);
+	        unsigned int i1=TMP.FND();
+	        cloc=0;wloc=0;
+	        TMP.ASSIGN(&ST1);
+//  	        TMP.print("2 part");
+
+	        i=TMP.STEP();
+	        while ((i>0)&&(i<i1))
+	        {
+
+	        	cloc+=c[i-1];
+	        	wloc+=w[i-1];
+//  	        	printf("<%i,%i> %d->%d %d->%d",j,i,c[i-1],cloc,w[i-1],wloc);
+	        	i=TMP.STEP();
+	        }
+	        u.FromDigit(cloc);
+	        ADDC1(&CT, &u,&Z3);
+	        u.FromDigit(wloc);
+	        ADDC1(&WT, &u,&Z3);
+
+	        i=i1;
+//		        printf("j=%i from %i to %i \n",j,i,klst-1);
+	       for(unsigned int i1=i;i1<klst;i1++)
+	    	{
+	           T.GetCol(&Y,i1);
+	          ADDROW(&WT,&WW,i1,&Y);
+	          ADDROW(&CT,&CC,i1,&Y);
+	     	  err = cudaGetLastError();
+	          if (err>0)
+	          {
+	              printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+	              return;
+	   		  }
+	        }
+
+	        LESS(&WT,&Z3,&w_max,&Z);
+	        GREAT(&CT,&Z,&c_lmax,&Z2);
+	    	err = cudaGetLastError();
+	    	if (err>0){
+	    	  printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+	    	  return;
+	    			}
+	       MAX(&CT,&Z2,&X);
+	       i=X.FND();
+//	       printf("max=%i\n",i);
+	       if (i>0)// смена максимума
+	       {
+	          T.GetRow(&t_lmax,i);
+	          CT.GetRow(&c_lmax,i);
+	          WT.GetRow(&w_lmax,i);
+//	          t_lmax.print("local");
+//	          printf("j=%i i=%i C=%llu W=%llu\n",j,i,c_lmax.ToDigit(),w_lmax.ToDigit());
+	       }
+	       j++;
+	       nj+=ns;
+
+	   	   ADDC1(&T,&SN,&Z3);
+
+	       err = cudaGetLastError();
+	       if (err>0){
+	            printf("after all %d , %s \n",err,cudaGetErrorString(err));
+	            return;
+	       }
+	    }
+}
+
+void knapsack_bound(int *w,int *c,int W, Table T,int &w_res, int &c_res, Slice res)
+{   unsigned int sz=T.size,lth=T.length;
+	unsigned long long int w0,w01,i,j,nn;//,W_t=0,W_b=0,k_b,k_t;
+	unsigned long long int cloc,wloc,wlast,wlmin;
+	Slice ST(sz),SB(sz),ST1(sz),SB1(sz),X(lth),w_max(N_K),c_lmax(N_K),w_lmax(N_K),t_lmax(sz);
+	Table WW(sz,N_K),CC(sz,N_K);
+	unsigned long long int nj,ns;//tmp,dig,
+	Table WT(lth,N_K), CT(lth,N_K);
+ 	Table WLast(lth,N_K), CLast(lth,N_K);
+ 	unsigned int klst;
+	bool change;
+
+	Slice  Y(lth),Z(lth),Z1(lth),Z2(lth),Z3(lth), SN(sz),TMP(sz),u(N_K),v(N_K);
+	cudaError_t err;
+	    branch_cut(M, w,W, &ST,&SB);
+	    ST.print("sorted ST");
+	    SB.print("sorted SB");
+	    nj=ST.ToDigit();
+	    printf("count  %llu \n",SB.ToDigit()-nj);
+
+	    // print results branch_cut
+	    	for (i=0; i<sz;i++){
+	    		w_max.FromDigit(w[i]);
+	    		WW.SetRow(&w_max,i+1);
+	    		w_max.FromDigit(c[i]);
+	    		CC.SetRow(&w_max,i+1);
+//	    		printf("<%i:%i,%i> ",i+1,w[i],c[i]);
+	    	}
+//	    	printf("\n");
+	    	w_max.FromDigit(W);
+
+	init_stable<<<sz,1>>>(T.get_device_pointer(),T.NN,sz);
+    Z1.CLR();
+    Z2.SET();
+    Z3.SET();
+    ADDC1(&T,&ST,&Z3);
+    c_lmax.CLR();
+    t_lmax.CLR();
+    CLEAR(&WLast); // тут должен быть h=N_K
+    CLEAR(&CLast);
+
+    klst=SN.FND()+1;
+    for(i=klst;i<=sz;i++)
+    {
+       T.GetCol(&Y,i);
+       ADDROW(&WLast,&WW,i,&Y);
+       ADDROW(&CLast,&CC,i,&Y);
+       err = cudaGetLastError();
+       if (err>0)
+    	{
+    	   printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+    	   return;
+    	}
+     }
+    MIN(&WLast,&Z3,&Y);
+    i=Y.FND();
+    WLast.GetRow(&u,i);
+    wlmin=u.ToDigit();
+    MAX(&WLast,&Z3,&Y);
+    i=Y.FND();
+    WLast.GetRow(&u,i);
+    wlast=u.ToDigit();
+    j=0;
+//		    printf("klst=%d\n",klst);
+    while (Z1.ZERO())//&&(j<10))
+    {
+        MATCH(&T,&Z3,&SB,&Z1);// тут должен быть h=H1
+        TCOPY(&WLast,&WT); // тут должен быть h=N_K
+        TCOPY(&CLast,&CT); // тут должен быть h=N_K
+
+        T.GetRow(&ST1,1);
+        T.GetRow(&SB1,lth);
+//		        ST1.print("ST");
+//		        SB1.print("SB");
+        TMP.ASSIGN(&ST1);
+        TMP.XOR(&SB1);
+        unsigned int i1=TMP.FND();
+        cloc=0;wloc=0;
+        TMP.ASSIGN(&ST1);
+//  	        TMP.print("2 part");
+
+        i=TMP.STEP();
+        while ((i>0)&&(i<i1))
+        {
+
+        	cloc+=c[i-1];
+        	wloc+=w[i-1];
+//  	        	printf("<%i,%i> %d->%d %d->%d",j,i,c[i-1],cloc,w[i-1],wloc);
+        	i=TMP.STEP();
+        }
+   if(wloc+wlmin<W){
+	   w01=0;
+	   for(i=klst-1;i>=i1;i--) w01+=w[i-1];
+        w0=W-wloc-wlast-w01;
+        change=0;
+        i=i1;
+        while((i>0)&&(w0>0))
+        {
+        	if((ST1.getbit(i)==0)&&(w[i-1]<w0))
+        	{
+        		wloc+=w[i-1];
+        		cloc+=c[i-1];
+        		T.SetCol(&Z3,i);
+        		w0-=w[i-1];
+//			        		printf("less 2^%d w[i] wloc=%llu w0=%d %d \n",i,wloc,w0,w01);
+        		change=1;
+        	}
+        	i--;
+        }
+
+/*			        if (change)
+        { ST1.print("ST");
+          SB1.print("SB");
+        	T.GetRow(&TMP,1);
+        	TMP.print("new");
+        	change=0;
+        }
+*/
+        u.FromDigit(cloc);
+        ADDC1(&CT, &u,&Z3);
+        u.FromDigit(wloc);
+        ADDC1(&WT, &u,&Z3);
+
+        i=i1;
+//		        printf("j=%i from %i to %i \n",j,i,klst-1);
+       for(unsigned int i1=i;i1<klst;i1++)
+    	{
+           T.GetCol(&Y,i1);
+          ADDROW(&WT,&WW,i1,&Y);
+          ADDROW(&CT,&CC,i1,&Y);
+     	  err = cudaGetLastError();
+          if (err>0)
+          {
+              printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+              return;
+   		  }
+        }
+
+        LESS(&WT,&Z3,&w_max,&Z);
+        GREAT(&CT,&Z,&c_lmax,&Z2);
+    	err = cudaGetLastError();
+    	if (err>0){
+    	  printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+    	  return;
+    			}
+       MAX(&CT,&Z2,&X);
+       i=X.FND();
+//	       printf("max=%i\n",i);
+       if (i>0)// смена максимума
+       {
+          T.GetRow(&t_lmax,i);
+          CT.GetRow(&c_lmax,i);
+          WT.GetRow(&w_lmax,i);
+//	          t_lmax.print("local");
+//	          printf("j=%i i=%i C=%llu W=%llu\n",j,i,c_lmax.ToDigit(),w_lmax.ToDigit());
+       }
+   }
+//			   else {ST1.print("not");}
+       j++;
+       nj+=ns;
+
+   	   ADDC1(&T,&SN,&Z3);
+
+       err = cudaGetLastError();
+       if (err>0){
+            printf("after all %d , %s \n",err,cudaGetErrorString(err));
+            return;
+       }
+
+    }
+
+	res.ASSIGN(&t_lmax);
+	c_res=c_lmax.ToDigit();
+}
+
+void knapsack_experiment(unsigned int sz, unsigned lth)
+{
+	int w[sz],c[sz],W,w_res,c_res;
+	Table T(lth,sz);
+	Slice res(sz);
+	if (InitAuxSlices(T.NN)>0){puts(" InitAuxSlices error");}
+	double tt;
+	struct timeval tv1,tv2;
+
+	FILE *f = fopen("res/time.txt", "w");
+	fprintf(f,"N\t W \t unsorted \t sorted by weight \t count only \t I \t II \t III \n");
+
+	problem_generate(sz, w, c);
+	W=rand()%(WMAX*sz/2)+1;
+
+	gettimeofday(&tv1,NULL);
+	knapsack_optim(w,c,W,T,w_res,c_res,res);
+	gettimeofday(&tv2,NULL);
+}
 void knapsack_exp()
 {
 	unsigned int sz=M,lth;
 //	lth=powl(2,sz);
 	lth=64*2048;//powl(2,sz);
 	int
-	w[M],c[M],W,k_b,k_t,i,j,nn;//,W_t=0,W_b=0;
-
+	w[M],c[M],W,w0,w01,i,j,nn;//,W_t=0,W_b=0,k_b,k_t;
+    unsigned long long int cloc,wloc,wlast,wlmin;
 	Slice ST(sz),SB(sz),ST1(sz),SB1(sz),X(lth),w_max(N_K),c_lmax(N_K),w_lmax(N_K),t_lmax(sz);
 
 	Table WW(sz,N_K),CC(sz,N_K),T(lth,sz);
@@ -162,6 +569,7 @@ void knapsack_exp()
     struct timeval tv1,tv2;
     gettimeofday(&tv1,NULL);
 	Table WT(lth,N_K), CT(lth,N_K);
+	bool change;
 
 	Slice  Y(lth),Z(lth),Z1(lth),Z2(lth),Z3(lth), SN(sz),TMP(sz),u(N_K),v(N_K);
 	FILE *f = fopen("res/time.txt", "w");
@@ -176,12 +584,12 @@ void knapsack_exp()
 	// ST1 Верхняя строка проверяемого
 	// SB1 Нижняя строка проверяемого
 //
- for (nn=0;nn<10;nn++)
+// for (nn=0;nn<2;nn++)
  {
 	printf("\n %d \n",nn);
 	problem_generate(M, w, c);
 	W=rand()%(WMAX*M/2)+1;
-	branch_cut(M, w,W,k_t,k_b);
+//	branch_cut(M, w,W,k_t,k_b);
 	branch_cut(M, w,W, &ST,&SB);
 //	ST.print("st");
 //	SB.print("sb");
@@ -238,7 +646,7 @@ void knapsack_exp()
     printf("Sorted by cost W=%d SN=%llu, ST=%llu, SB=%llu: %llu \n",W,ns,nj,SB.ToDigit(),SB.ToDigit()-nj);
  */
     // сортировка по весу
-    sort(w,c,sz);
+    sortdown(w,c,sz);
     branch_cut(M, w,W, &ST,&SB);
     ST.print("sorted ST");
     SB.print("sorted SB");
@@ -251,28 +659,29 @@ void knapsack_exp()
     		WW.SetRow(&w_max,i+1);
     		w_max.FromDigit(c[i]);
     		CC.SetRow(&w_max,i+1);
+    		printf("<%i:%i,%i> ",i+1,w[i],c[i]);
     	}
+    	printf("\n");
     	w_max.FromDigit(W);
     //вставить проверку, что ST<>SB, иначе тривиально.
 
-
-//    printf("Перебор без вычислений \n");
+/*
+    printf("only count\n");
     gettimeofday(&tv1,NULL);
     j=0;
     while(Z1.ZERO())
     {
 
         MATCH(&T,&Z3,&SB,&Z1);// тут должен быть h=H1
-       j++;
-       nj+=ns;
-    	   ADDC1(&T,&SN,&Z3); // к первой строке не добавляется, там максимум
+    	ADDC1(&T,&SN,&Z3); // к первой строке не добавляется, там максимум
     }
 
      gettimeofday(&tv2,NULL);
 	 tt=0.000001*(tv2.tv_usec-tv1.tv_usec)+(tv2.tv_sec-tv1.tv_sec);
-	 fprintf(f,"%f.2 \t", tt);
+	 fprintf(f,"%.2f \t", tt);
 	 /****************************************************************************/
-
+	 /*
+	 printf("first\n");
 	 gettimeofday(&tv1,NULL);
 	init_stable<<<sz,1>>>(T.get_device_pointer(),T.NN,sz);
     Z1.CLR();
@@ -339,9 +748,10 @@ void knapsack_exp()
 //	 printf("Max=%llu, NextSB=%llu \n",ST1.ToDigit(),SB1.ToDigit());
 	 printf("j=%i W=%d weight sum= %llu, cost summ = %llu \n",j,W, w_lmax.ToDigit(),c_lmax.ToDigit());
 
-	 fprintf(f,"%f.2 \t", tt);
+	 fprintf(f,"%.2f \t", tt);
 /****************************************************************/
-
+	 /*
+	   printf("second\n");
 	 	gettimeofday(&tv1,NULL);
 		init_stable<<<sz,1>>>(T.get_device_pointer(),T.NN,sz);
 	    Z1.CLR();
@@ -425,9 +835,9 @@ void knapsack_exp()
 //		 printf("Max=%llu, NextSB=%llu \n",ST1.ToDigit(),SB1.ToDigit());
 		 printf("j=%i W=%i weight sum= %llu, cost summ = %llu \n",j,W, w_lmax.ToDigit(),c_lmax.ToDigit());
 
-		 fprintf(f,"%f.2 \t", tt);
+		 fprintf(f,"%.2f \t", tt);
 /********************************************************************/
-
+		 printf("third\n");
 		 	gettimeofday(&tv1,NULL);
 			init_stable<<<sz,1>>>(T.get_device_pointer(),T.NN,sz);
 		    Z1.CLR();
@@ -454,7 +864,7 @@ void knapsack_exp()
 		     }
 		    j=0;
 //		    printf("klst=%d\n",klst);
-		    unsigned long long int cloc,wloc;
+
 		    while (Z1.ZERO())//&&(j<10))
 		    {
 		        MATCH(&T,&Z3,&SB,&Z1);// тут должен быть h=H1
@@ -538,8 +948,159 @@ void knapsack_exp()
 
 			 printf("j=%i W=%i weight sum= %llu, cost summ = %llu \n",j,W, w_lmax.ToDigit(),c_lmax.ToDigit());
 
-			 fprintf(f,"%f.2  \n", tt);
+			 fprintf(f,"%.2f  \n", tt);
 /*************************************************************/
+			 printf("fourth\n");
+			 	gettimeofday(&tv1,NULL);
+				init_stable<<<sz,1>>>(T.get_device_pointer(),T.NN,sz);
+			    Z1.CLR();
+			    Z2.SET();
+			    Z3.SET();
+			    ADDC1(&T,&ST,&Z3);
+			    c_lmax.CLR();
+			    t_lmax.CLR();
+			    CLEAR(&WLast); // тут должен быть h=N_K
+			    CLEAR(&CLast);
+
+			    klst=SN.FND()+1;
+			    for(i=klst;i<=sz;i++)
+			    {
+			       T.GetCol(&Y,i);
+			       ADDROW(&WLast,&WW,i,&Y);
+			       ADDROW(&CLast,&CC,i,&Y);
+			       err = cudaGetLastError();
+			       if (err>0)
+			    	{
+			    	   printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+			    	   return;
+			    	}
+			     }
+			    MIN(&WLast,&Z3,&Y);
+			    i=Y.FND();
+			    WLast.GetRow(&u,i);
+			    wlmin=u.ToDigit();
+			    MAX(&WLast,&Z3,&Y);
+			    i=Y.FND();
+			    WLast.GetRow(&u,i);
+			    wlast=u.ToDigit();
+			    j=0;
+	//		    printf("klst=%d\n",klst);
+			    while (Z1.ZERO())//&&(j<10))
+			    {
+			        MATCH(&T,&Z3,&SB,&Z1);// тут должен быть h=H1
+			        TCOPY(&WLast,&WT); // тут должен быть h=N_K
+			        TCOPY(&CLast,&CT); // тут должен быть h=N_K
+
+			        T.GetRow(&ST1,1);
+			        T.GetRow(&SB1,lth);
+	//		        ST1.print("ST");
+	//		        SB1.print("SB");
+			        TMP.ASSIGN(&ST1);
+			        TMP.XOR(&SB1);
+			        unsigned int i1=TMP.FND();
+			        cloc=0;wloc=0;
+			        TMP.ASSIGN(&ST1);
+	  //  	        TMP.print("2 part");
+
+			        i=TMP.STEP();
+			        while ((i>0)&&(i<i1))
+			        {
+
+			        	cloc+=c[i-1];
+			        	wloc+=w[i-1];
+	  //  	        	printf("<%i,%i> %d->%d %d->%d",j,i,c[i-1],cloc,w[i-1],wloc);
+			        	i=TMP.STEP();
+			        }
+			   if(wloc+wlmin<W){
+				   w01=0;
+				   for(i=klst-1;i>=i1;i--) w01+=w[i-1];
+			        w0=W-wloc-wlast-w01;
+			        change=0;
+			        i=i1;
+			        while((i>0)&&(w0>0))
+			        {
+			        	if((ST1.getbit(i)==0)&&(w[i-1]<w0))
+			        	{
+			        		wloc+=w[i-1];
+			        		cloc+=c[i-1];
+			        		T.SetCol(&Z3,i);
+			        		w0-=w[i-1];
+//			        		printf("less 2^%d w[i] wloc=%llu w0=%d %d \n",i,wloc,w0,w01);
+			        		change=1;
+			        	}
+			        	i--;
+			        }
+
+/*			        if (change)
+			        { ST1.print("ST");
+			          SB1.print("SB");
+			        	T.GetRow(&TMP,1);
+			        	TMP.print("new");
+			        	change=0;
+			        }
+*/
+			        u.FromDigit(cloc);
+			        ADDC1(&CT, &u,&Z3);
+			        u.FromDigit(wloc);
+			        ADDC1(&WT, &u,&Z3);
+
+			        i=i1;
+	//		        printf("j=%i from %i to %i \n",j,i,klst-1);
+			       for(unsigned int i1=i;i1<klst;i1++)
+			    	{
+			           T.GetCol(&Y,i1);
+			          ADDROW(&WT,&WW,i1,&Y);
+			          ADDROW(&CT,&CC,i1,&Y);
+			     	  err = cudaGetLastError();
+			          if (err>0)
+			          {
+			              printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+			              return;
+			   		  }
+			        }
+
+			        LESS(&WT,&Z3,&w_max,&Z);
+			        GREAT(&CT,&Z,&c_lmax,&Z2);
+			    	err = cudaGetLastError();
+			    	if (err>0){
+			    	  printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+			    	  return;
+			    			}
+			       MAX(&CT,&Z2,&X);
+			       i=X.FND();
+		//	       printf("max=%i\n",i);
+			       if (i>0)// смена максимума
+			       {
+			          T.GetRow(&t_lmax,i);
+			          CT.GetRow(&c_lmax,i);
+			          WT.GetRow(&w_lmax,i);
+		//	          t_lmax.print("local");
+		//	          printf("j=%i i=%i C=%llu W=%llu\n",j,i,c_lmax.ToDigit(),w_lmax.ToDigit());
+			       }
+			   }
+//			   else {ST1.print("not");}
+			       j++;
+			       nj+=ns;
+
+			   	   ADDC1(&T,&SN,&Z3);
+
+			       err = cudaGetLastError();
+			       if (err>0){
+			            printf("after all %d , %s \n",err,cudaGetErrorString(err));
+			            return;
+			       }
+
+			    }
+
+			     gettimeofday(&tv2,NULL);
+				 tt=0.000001*(tv2.tv_usec-tv1.tv_usec)+(tv2.tv_sec-tv1.tv_sec);
+
+				 t_lmax.print("MAX");
+
+				 printf("j=%i W=%i weight sum= %llu, cost summ = %llu \n",j,W, w_lmax.ToDigit(),c_lmax.ToDigit());
+
+				 fprintf(f,"%.2f  \n", tt);
+	/*************************************************************/
  }
 			 fclose(f);
 }

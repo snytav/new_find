@@ -16,7 +16,7 @@ void MATCH(Table *tab, Slice *X, Slice *w, Slice *Z)
 	NN=X->NN;
 	IT=X->IT;
 	blocks=X->blocks;
-	cudaFuncSetAttribute(match_kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, NN*AUX_COUNT*sizeof(unsigned long long int));
+//	cudaFuncSetAttribute(match_kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, NN*AUX_COUNT*sizeof(unsigned long long int));
 	match_kernel<<<blocks,1>>>(tab->get_device_pointer(),X->get_device_pointer(),w->get_device_pointer(),Z->get_device_pointer(),tab->size,NN,IT,d_aux_slice);
 	//<<<blocks,1,NN*AUX_COUNT*sizeof(unsigned long long int)>>>(tab->get_device_pointer(),X->get_device_pointer(),w->get_device_pointer(),Z->get_device_pointer(),tab->size,NN,IT);
     cudaError_t err = cudaGetLastError();

@@ -18,11 +18,11 @@ __device__ bool some(LongPointer d_y,unsigned int length,unsigned int NN, unsign
 * нужна синхронизация по всем потокам
 * использует вспомогательный слайс
 */
-/*
+
 void MIN(Table *T, Slice *X, Slice*Z);
 __global__ void min_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_z,
 		unsigned int length, unsigned int size,unsigned int NN, unsigned int IT);
-*/
+
 void MAX(Table *T, Slice *X, Slice*Z);
 __global__ void max_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_z,
 		unsigned int length, unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
