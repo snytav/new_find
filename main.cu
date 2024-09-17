@@ -59,10 +59,13 @@ int main()
     	X.print("col");
     }
     */
-
-    knapsack_exp();
+	unsigned int N1,sz,lth;
+	sz=32;
+	N1= pow(2,11); //2048;
+	lth=64*N1;
+    knapsack_experiment(sz,lth);
 	cudaError_t err = cudaGetLastError();
-	if (err>0) printf("errors after knapsack_exp %d\n",err);
+	if (err>0) printf("errors after knapsack_exp %d %s\n",err,cudaGetErrorString(err));
     return 0;
 }
  

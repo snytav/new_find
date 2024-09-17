@@ -4,6 +4,22 @@
 #include <stdio.h>
 #include <sys/time.h>
 
+void init_stable(Table T)
+{
+    unsigned int sz=T.size;
+    unsigned int lth=T.length;
+    Slice X(lth);
+    for(int i=1;i<=sz;i++)
+    {
+//    	printf("%d ",i);
+        X.MASK1(sz-i);
+        T.SetCol(&X,i);
+    }
+//    puts("INIT");
+    cudaError_t err = cudaGetLastError();
+       if (err>0) printf("errors after init_stable %d:%s\n",err, cudaGetErrorString(err));
+}
+
 __global__ void init_stable(LongPointer d_T,unsigned int NN1,unsigned int size)
 {	LongPointer d_t;
 	unsigned long long int init_x[]={0xAAAAAAAAAAAAAAAA,0xCCCCCCCCCCCCCCCC,
@@ -160,14 +176,23 @@ for(i=1;i<=size;i++)
 less(d_wt,d_z3,d_wmax,d_z,size,NNT,IT,aux_slice);
 }
 
-void complete_search(Table T, Slice ST,Slice SB, Slice SN)
+void complete_search(Table T, Slice ST,Slice SB)
 {
 	unsigned int sz=T.size;
 	unsigned int lth=T.length;
 	Slice Z1(lth),Z2(lth), Z3(lth),Y(lth);
-	Slice ST1(sz),SB1(sz),TMP(sz);
+	Slice ST1(sz),SB1(sz),TMP(sz),SN(sz);
 	unsigned int i,m,l;
-    init_stable<<<sz,1>>>(T.get_device_pointer(),T.NN,sz);
+
+	init_stable(T);
+//    init_stable<<<sz,1>>>(T.get_device_pointer(),T.NN,sz);
+    T.GetRow(&SB1,lth); l=SB1.FND();
+    SN.CLR();
+    if (l>1) SN.setbit(l-1,1);
+    else
+    {
+    	printf("перебор за одну итерацию l=%d \n",l);
+    }
 	    Z1.CLR();
 	    Z2.SET();
 	    Z3.SET();
@@ -175,7 +200,6 @@ void complete_search(Table T, Slice ST,Slice SB, Slice SN)
 /*
  *  инициализация переменных задачи
  */
-	    l=SN.FND()+1;
 	    for(i=l;i<=sz;i++)
 	    {
 /*
@@ -226,15 +250,16 @@ void complete_search(Table T, Slice ST,Slice SB, Slice SN)
 
 void knapsack_optim(int *w,int *c,int W, Table T,int &w_res, int &c_res, Slice res)
 {  unsigned int sz=T.size,lth=T.length;
-unsigned long long int w0,w01,i,j,nn;//,W_t=0,W_b=0,k_b,k_t;
-unsigned long long int cloc,wloc,wlast,wlmin;
+//unsigned long long int w0,w01,nn;//,W_t=0,W_b=0,k_b,k_t;
+unsigned long long int i,j;
+unsigned long long int cloc,wloc;//,wlast,wlmin;
 Slice ST(sz),SB(sz),ST1(sz),SB1(sz),X(lth),w_max(N_K),c_lmax(N_K),w_lmax(N_K),t_lmax(sz);
 Table WW(sz,N_K),CC(sz,N_K);
 unsigned long long int nj,ns;//tmp,dig,
 Table WT(lth,N_K), CT(lth,N_K);
 	Table WLast(lth,N_K), CLast(lth,N_K);
 	unsigned int klst;
-bool change;
+// bool change;
 
 Slice  Y(lth),Z(lth),Z1(lth),Z2(lth),Z3(lth), SN(sz),TMP(sz),u(N_K),v(N_K);
 cudaError_t err;
@@ -274,14 +299,14 @@ cudaError_t err;
 	       err = cudaGetLastError();
 	       if (err>0)
 	    	{
-	    	   printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+	    	   printf("after for j=%llu i=%llu %d , %s \n",j,i,err,cudaGetErrorString(err));
 	    	   return;
 	    	}
 	     }
 	    j=0;
 //		    printf("klst=%d\n",klst);
 
-	    while (Z1.ZERO())//&&(j<10))
+	    while (Z1.ZERO()&&(j<10))
 	    {
 	        MATCH(&T,&Z3,&SB,&Z1);// тут должен быть h=H1
 	        TCOPY(&WLast,&WT); // тут должен быть h=N_K
@@ -322,7 +347,7 @@ cudaError_t err;
 	     	  err = cudaGetLastError();
 	          if (err>0)
 	          {
-	              printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+	              printf("after for j=%llu i=%llu %d , %s \n",j,i,err,cudaGetErrorString(err));
 	              return;
 	   		  }
 	        }
@@ -331,7 +356,7 @@ cudaError_t err;
 	        GREAT(&CT,&Z,&c_lmax,&Z2);
 	    	err = cudaGetLastError();
 	    	if (err>0){
-	    	  printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+	    	  printf("after for j=%llu i=%llu %d , %s \n",j,i,err,cudaGetErrorString(err));
 	    	  return;
 	    			}
 	       MAX(&CT,&Z2,&X);
@@ -360,7 +385,7 @@ cudaError_t err;
 
 void knapsack_bound(int *w,int *c,int W, Table T,int &w_res, int &c_res, Slice res)
 {   unsigned int sz=T.size,lth=T.length;
-	unsigned long long int w0,w01,i,j,nn;//,W_t=0,W_b=0,k_b,k_t;
+	unsigned long long int w0,w01,i,j;//,nn;//,W_t=0,W_b=0,k_b,k_t;
 	unsigned long long int cloc,wloc,wlast,wlmin;
 	Slice ST(sz),SB(sz),ST1(sz),SB1(sz),X(lth),w_max(N_K),c_lmax(N_K),w_lmax(N_K),t_lmax(sz);
 	Table WW(sz,N_K),CC(sz,N_K);
@@ -368,7 +393,7 @@ void knapsack_bound(int *w,int *c,int W, Table T,int &w_res, int &c_res, Slice r
 	Table WT(lth,N_K), CT(lth,N_K);
  	Table WLast(lth,N_K), CLast(lth,N_K);
  	unsigned int klst;
-	bool change;
+//	bool change;
 
 	Slice  Y(lth),Z(lth),Z1(lth),Z2(lth),Z3(lth), SN(sz),TMP(sz),u(N_K),v(N_K);
 	cudaError_t err;
@@ -408,7 +433,7 @@ void knapsack_bound(int *w,int *c,int W, Table T,int &w_res, int &c_res, Slice r
        err = cudaGetLastError();
        if (err>0)
     	{
-    	   printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+    	   printf("after for j=%llu i=%llu %d , %s \n",j,i,err,cudaGetErrorString(err));
     	   return;
     	}
      }
@@ -452,7 +477,7 @@ void knapsack_bound(int *w,int *c,int W, Table T,int &w_res, int &c_res, Slice r
 	   w01=0;
 	   for(i=klst-1;i>=i1;i--) w01+=w[i-1];
         w0=W-wloc-wlast-w01;
-        change=0;
+//        change=0;
         i=i1;
         while((i>0)&&(w0>0))
         {
@@ -463,7 +488,7 @@ void knapsack_bound(int *w,int *c,int W, Table T,int &w_res, int &c_res, Slice r
         		T.SetCol(&Z3,i);
         		w0-=w[i-1];
 //			        		printf("less 2^%d w[i] wloc=%llu w0=%d %d \n",i,wloc,w0,w01);
-        		change=1;
+//        		change=1;
         	}
         	i--;
         }
@@ -491,7 +516,7 @@ void knapsack_bound(int *w,int *c,int W, Table T,int &w_res, int &c_res, Slice r
      	  err = cudaGetLastError();
           if (err>0)
           {
-              printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+              printf("after for j=%llu i=%llu %d , %s \n",j,i,err,cudaGetErrorString(err));
               return;
    		  }
         }
@@ -500,7 +525,7 @@ void knapsack_bound(int *w,int *c,int W, Table T,int &w_res, int &c_res, Slice r
         GREAT(&CT,&Z,&c_lmax,&Z2);
     	err = cudaGetLastError();
     	if (err>0){
-    	  printf("after for j=%i i=%i %d , %s \n",j,i,err,cudaGetErrorString(err));
+    	  printf("after for j=%llu i=%llu %d , %s \n",j,i,err,cudaGetErrorString(err));
     	  return;
     			}
        MAX(&CT,&Z2,&X);
@@ -535,9 +560,11 @@ void knapsack_bound(int *w,int *c,int W, Table T,int &w_res, int &c_res, Slice r
 
 void knapsack_experiment(unsigned int sz, unsigned lth)
 {
-	int w[sz],c[sz],W,w_res,c_res;
+//	int w[sz],c[sz],W,w_res,c_res;
+//	Slice res(sz);
 	Table T(lth,sz);
-	Slice res(sz);
+	Slice ST(sz),SB(sz);
+	ST.CLR();SB.SET();
 	if (InitAuxSlices(T.NN)>0){puts(" InitAuxSlices error");}
 	double tt;
 	struct timeval tv1,tv2;
@@ -545,12 +572,18 @@ void knapsack_experiment(unsigned int sz, unsigned lth)
 	FILE *f = fopen("res/time.txt", "w");
 	fprintf(f,"N\t W \t unsorted \t sorted by weight \t count only \t I \t II \t III \n");
 
-	problem_generate(sz, w, c);
-	W=rand()%(WMAX*sz/2)+1;
+//	problem_generate(sz, w, c);
+//	W=rand()%(WMAX*sz/2)+1;
 
+	printf("complete_search:blocks=%d it=%d %dx%d,NN=%d ",T.blocks,T.IT, sz,lth,T.NN);
 	gettimeofday(&tv1,NULL);
-	knapsack_optim(w,c,W,T,w_res,c_res,res);
+//	knapsack_optim(w,c,W,T,w_res,c_res,res);
+	complete_search(T, ST, SB);
 	gettimeofday(&tv2,NULL);
+	tt=0.000001*(tv2.tv_usec-tv1.tv_usec)+(tv2.tv_sec-tv1.tv_sec);
+	fprintf(f,"%.2f \t", tt);
+	printf(" t=%.2f \n",tt);
+
 }
 void knapsack_exp()
 {
@@ -558,7 +591,7 @@ void knapsack_exp()
 //	lth=powl(2,sz);
 	lth=64*2048;//powl(2,sz);
 	int
-	w[M],c[M],W,w0,w01,i,j,nn;//,W_t=0,W_b=0,k_b,k_t;
+	w[M],c[M],W,w0,w01,i,j;//,nn;//,W_t=0,W_b=0,k_b,k_t;
     unsigned long long int cloc,wloc,wlast,wlmin;
 	Slice ST(sz),SB(sz),ST1(sz),SB1(sz),X(lth),w_max(N_K),c_lmax(N_K),w_lmax(N_K),t_lmax(sz);
 
@@ -569,7 +602,7 @@ void knapsack_exp()
     struct timeval tv1,tv2;
     gettimeofday(&tv1,NULL);
 	Table WT(lth,N_K), CT(lth,N_K);
-	bool change;
+//	bool change;
 
 	Slice  Y(lth),Z(lth),Z1(lth),Z2(lth),Z3(lth), SN(sz),TMP(sz),u(N_K),v(N_K);
 	FILE *f = fopen("res/time.txt", "w");
@@ -586,7 +619,7 @@ void knapsack_exp()
 //
 // for (nn=0;nn<2;nn++)
  {
-	printf("\n %d \n",nn);
+//	printf("\n %d \n",nn);
 	problem_generate(M, w, c);
 	W=rand()%(WMAX*M/2)+1;
 //	branch_cut(M, w,W,k_t,k_b);
@@ -636,7 +669,7 @@ void knapsack_exp()
     SB.print("insorted SB");
     ns=SN.ToDigit();
     nj=ST.ToDigit();
-    fprintf(f,"%d\t W=%d \t %llu \t",nn, W,SB.ToDigit()-nj);
+    fprintf(f," W=%d \t %llu \t",W,SB.ToDigit()-nj);
  /*/ сортировка по стоимости
     sort(c,w,sz);
     branch_cut(M, w,W, &ST,&SB);
@@ -837,7 +870,7 @@ void knapsack_exp()
 
 		 fprintf(f,"%.2f \t", tt);
 /********************************************************************/
-		 printf("third\n");
+/*		 printf("third\n");
 		 	gettimeofday(&tv1,NULL);
 			init_stable<<<sz,1>>>(T.get_device_pointer(),T.NN,sz);
 		    Z1.CLR();
@@ -1015,7 +1048,7 @@ void knapsack_exp()
 				   w01=0;
 				   for(i=klst-1;i>=i1;i--) w01+=w[i-1];
 			        w0=W-wloc-wlast-w01;
-			        change=0;
+//			    change=0;
 			        i=i1;
 			        while((i>0)&&(w0>0))
 			        {
@@ -1026,7 +1059,7 @@ void knapsack_exp()
 			        		T.SetCol(&Z3,i);
 			        		w0-=w[i-1];
 //			        		printf("less 2^%d w[i] wloc=%llu w0=%d %d \n",i,wloc,w0,w01);
-			        		change=1;
+//			     change=1;
 			        	}
 			        	i--;
 			        }
