@@ -334,6 +334,40 @@ __device__ void _mask(LongPointer d_v, int num,unsigned int NN,
 		  d_v[index+i]=zero;
 	  }
 }
+__global__ void mask1_kernel(LongPointer d_v,int num, unsigned int NN,
+unsigned int IT=1){   _mask1(d_v,num,NN,IT);}
+
+__device__ void _mask1(LongPointer d_v, int num,unsigned int NN,
+		unsigned int it)
+{
+  unsigned long long int init_x[8]={0xAAAAAAAAAAAAAAAA,0xCCCCCCCCCCCCCCCC,
+			   0xF0F0F0F0F0F0F0F0,0xFF00FF00FF00FF00,
+			   0xFFFF0000FFFF0000,0xFFFFFFFF00000000,
+			   0xFFFFFFFFFFFFFFFF,0};
+  unsigned long long int zero;
+//  printf("%i in %i \n", num,num_el);
+
+  unsigned int index;
+
+  	if (gridDim.x>1) index=blockIdx.x*it;
+  	else index=threadIdx.x*it;
+
+
+  		for(int i=0; i<it;i++)
+  			if (index+i<NN){
+  			  	if (num<6){
+  			  		d_v[index+i] =init_x[num];
+  			  	}
+  			  	else
+  			  	{
+  			  		zero=index+i;
+  			  		zero=zero>>(num-6);
+  			  		if (zero%2==0)d_v[index+i] =init_x[7];
+  			  		else d_v[index+i] =init_x[6];
+  			  	}
+  			}
+}
+
 
 void __global__ shiftup_kernel(LongPointer d_v, LongPointer d_v_in,int i,unsigned int NN,
 		unsigned int it=1)

@@ -20,7 +20,7 @@ public:
    void GetRow1(Slice* X,unsigned int i);
    void SetRow(Slice* X,unsigned int i);
 // печать в двоичном виде
-   void fprint(char *label);
+   void fprint(const char *label);
 };
 
 __device__ void _getCol(LongPointer d_table, LongPointer d_slice,unsigned int i,

@@ -20,7 +20,7 @@ Table::Table(unsigned int k,unsigned int s)
 
 Table::~Table()
 {
-	    cudaFree(d_v);
+//	 if(d_v!=NULL) cudaFree(d_v);
     }
 
 void Table::GetCol(Slice* X,unsigned int i)
@@ -217,14 +217,14 @@ __global__ void print_block_kernel(LongPointer d_v,char *d_str,unsigned int leng
 
 }
 
-void Table::fprint(char *label)
+void Table::fprint(const char *label)
   {
   	FILE * pFile;
   	char fname[30]{0};
   	strcat(fname,label);
   	strcat(fname,".dat");
   	pFile = fopen (fname,"w");
-  	fprintf(pFile,"%s (%dx%d)\n%s\n",label,length,size);
+  	fprintf(pFile,"%s (%dx%d)\n",label,length,size);
 // печать  64 строк слайса
   	char *d_str, *str;
   	  	 cudaMalloc(&d_str,SIZE_OF_LONG_INT*(size+1)*sizeof(char));

@@ -24,6 +24,7 @@ public:
    void SET();
    void CLR();
    void MASK(int i);
+   void MASK1(int i);
 
    unsigned int FND();
    unsigned int STEP();
@@ -41,6 +42,6 @@ public:
    unsigned long long int ToDigit();
    void FromDigit(unsigned long long dig);
 
-   void print(char *label);
-   void fprint(char *label);
+   void print(const char *label);
+   void fprint(const char *label);
 };

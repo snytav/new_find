@@ -3,6 +3,7 @@
 #include "device_launch_parameters.h"
 #include "device_functions.h"
 #include <stdio.h>
+#include <string>
 //#include "cuPrintf.cuh"
 //#include "cuPrintf.cu"
 //#include <time.h>
@@ -15,12 +16,11 @@
 	NN=(k-1)/SIZE_OF_LONG_INT +1;
 	blocks=min(NN,MAX_BLOCK);
     IT=(NN-1)/blocks+1;
-
     cudaMalloc(&d_v,NN*sizeof(unsigned long long int));
     }
  Slice::~Slice()
    {
-	    cudaFree(d_v);
+//	 if(d_v!=NULL) cudaFree(d_v);
     }
  void Slice::ASSIGN(Slice *X)
  {
@@ -91,7 +91,7 @@
  	find_kernel<<<1,threads>>>(d_v,length,NN,it,d_res);
  	cudaMemcpy(&h_res, d_res, sizeof(int), cudaMemcpyDeviceToHost);
 
- 	setbit(h_res,0);
+ 	if (h_res>0) setbit(h_res,0);
  	return h_res;
  }
 
@@ -196,17 +196,17 @@
 		}
  }
 
- void Slice::print(char *label)
+ void Slice::print(const char *label)
  { char *d_str, *str;
  	 cudaMalloc(&d_str,NN*SIZE_OF_LONG_INT*sizeof(char));
  	 str=new char[NN*SIZE_OF_LONG_INT];
  	 print_kernel<<<blocks,1>>>(d_v,d_str,length,NN,IT);
  	cudaMemcpy(str,d_str,NN*SIZE_OF_LONG_INT*sizeof(char),cudaMemcpyDeviceToHost);
  	printf("%s \n%s\n",label,str);
- 	cudaFree(d_str);
+ //	cudaFree(d_str);
  }
 
- void Slice::fprint(char *label)
+ void Slice::fprint(const char *label)
   { char *d_str, *str;
   	 cudaMalloc(&d_str,NN*SIZE_OF_LONG_INT*sizeof(char));
   	 str=new char[NN*SIZE_OF_LONG_INT];
@@ -220,12 +220,13 @@
   	pFile = fopen (fname,"w");
   	fprintf(pFile,"%s (%d)\n%s\n",label,length,str);
   	fclose (pFile);
-  	cudaFree(d_str);
+ // 	cudaFree(d_str);
   }
 
  void Slice::setbit(unsigned int n, int bit)
  {
-	 setbit_kernel<<<1,1>>>(d_v,n,bit);
+	if((n>0)&& (n<length)) setbit_kernel<<<1,1>>>(d_v,n,bit);
+	else printf("setbit: incorrect position %d \n",n);
  }
 
  int Slice::getbit(unsigned int n)
@@ -243,7 +244,10 @@
  {
  	mask_kernel<<<blocks,1>>>(d_v,i,NN,IT);
  }
-
+ void Slice::MASK1(int i)
+  {
+  	mask1_kernel<<<blocks,1>>>(d_v,i,NN,IT);
+  }
  void Slice::shift_up(int i,Slice *s)
  {
  	unsigned long long int *d_v_in;

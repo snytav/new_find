@@ -4,7 +4,7 @@
  *  библиотека содержит реализацию функций на устройстве
  */
 #define MAX_THREADS 1024
-#define MAX_BLOCK 32
+#define MAX_BLOCK 64
 #define SIZE_OF_LONG_INT 64
 
 typedef unsigned long long int *LongPointer;
@@ -68,6 +68,10 @@ unsigned int IT);
 __device__ void _mask( LongPointer d_v1,int i, unsigned int NN,
 unsigned int IT);
 __global__ void mask_kernel(LongPointer d_v1, int i,unsigned int NN,
+unsigned int IT);
+__device__ void _mask1( LongPointer d_v1,int i, unsigned int NN,
+unsigned int IT);
+__global__ void mask1_kernel(LongPointer d_v1, int i,unsigned int NN,
 unsigned int IT);
 
 __global__ void  shiftup_kernel(LongPointer d_v, LongPointer d_v_in,int i,unsigned int NN,
