@@ -3,7 +3,7 @@
 
 #include "table.h"
 
-#define AUX_COUNT 3
+#define AUX_COUNT 4
 // память для AUX_CONT вспомогательных слайсов
 extern LongPointer d_aux_slice;
 int InitAuxSlices(unsigned  int NN);
@@ -122,29 +122,29 @@ __device__ void tcopy4(LongPointer *d_t, int j, int h, LongPointer *d_f);
 //---------------------------- III группа алгоритмов--------------------------------
 
 void ADDV(Table *T, Table *R, Slice *X, Table *S);
-__global__ void addv_kernel(LongPointer d_t,LongPointer d_r,LongPointer d_x,LongPointer d_s,LongPointer d_b,
+__global__ void addv_kernel(LongPointer d_t,LongPointer d_r,LongPointer d_x,LongPointer d_s,
 				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);//<<<NN,1>>>
 //d_b перенос на предыдущий разряд
-__device__ void addv(LongPointer d_t,LongPointer d_r,LongPointer d_x,LongPointer d_s,LongPointer d_b,
+__device__ void addv(LongPointer d_t,LongPointer d_r,LongPointer d_x,LongPointer d_s,
 				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 
 void ADDC(Table *T, Slice *w, Slice *X, Table *S);
-__global__ void addc_kernel(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_s,LongPointer d_b,
+__global__ void addc_kernel(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_s,
 				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
-__device__ void addc(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_s,LongPointer d_b,
+__device__ void addc(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_s,
 				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 
 void ADDC1(Table *T, Slice *w, Slice *X);
-__global__ void addc1_kernel(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_b,
+__global__ void addc1_kernel(LongPointer d_t,LongPointer d_w,LongPointer d_x,
 				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
-__device__ void addc1(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_b,
+__device__ void addc1(LongPointer d_t,LongPointer d_w,LongPointer d_x,
 				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice);
 
 void ADDROW(Table *T, Table *R, unsigned int i, Slice *X);
-__global__ void addrow_kernel(LongPointer d_t,LongPointer d_r,unsigned int i,LongPointer d_x,LongPointer d_b,
+__global__ void addrow_kernel(LongPointer d_t,LongPointer d_r,unsigned int i,LongPointer d_x,
 				unsigned int size,unsigned int NNT,unsigned int NNR, unsigned int IT,LongPointer aux_slice);//<<<NN,1>>>
 //d_b перенос на предыдущий разряд
-__device__ void addrow(LongPointer d_t,LongPointer d_r,unsigned int i,LongPointer d_x,LongPointer d_b,
+__device__ void addrow(LongPointer d_t,LongPointer d_r,unsigned int i,LongPointer d_x,
 		unsigned int size,unsigned int NNT,unsigned int NNR, unsigned int IT,LongPointer aux_slice);
 /*
 void SUBTV(Table *T, Table *R, Slice *X,Table *S);

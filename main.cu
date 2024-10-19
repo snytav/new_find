@@ -1,6 +1,6 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-#include "device_functions.h"
+//#include "device_functions.h"
 #include <stdio.h>
 #include <time.h>
 //#include "slice.h"
@@ -61,9 +61,27 @@ int main()
     */
 	unsigned int N1,sz,lth;
 	sz=32;
-	N1= pow(2,11); //2048;
+	N1=pow(2,15); //2048;
 	lth=64*N1;
+	MAX_BLOCK=64;
+/*	Table T(lth,sz);
+	Slice TMP(sz),X(lth);
+	init_stable(T);
+	for(int i=1; i<=sz;i++)
+		{
+			T.GetCol(&X,i);
+			printf(" %i",i);X.print("col");
+		}
+	for(int i=1; i<lth;i++)
+	{
+		T.GetRow(&TMP,i);
+		printf(" %i",i);TMP.print("row");
+	}
+*/
+//	while(MAX_BLOCK>31){
     knapsack_experiment(sz,lth);
+//    MAX_BLOCK=MAX_BLOCK/32;
+//	}
 	cudaError_t err = cudaGetLastError();
 	if (err>0) printf("errors after knapsack_exp %d %s\n",err,cudaGetErrorString(err));
     return 0;

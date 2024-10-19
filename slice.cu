@@ -1,7 +1,7 @@
 
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-#include "device_functions.h"
+//#include "device_functions.h"
 #include <stdio.h>
 #include <string>
 //#include "cuPrintf.cuh"
@@ -61,9 +61,10 @@
  {
  	// вычислить конфигурацию
  	unsigned int threads,it;
- 	int *d_res,h_res;
- 	cudaMalloc(&d_res, sizeof(int));
-
+ 	int static *d_res=NULL,h_res;
+ 	if (d_res==NULL)cudaMalloc(&d_res, sizeof(int));
+//cudaError_t err = cudaGetLastError();
+// 	if (err>0) printf("\n errors FND malloc %d %s \n",err,cudaGetErrorString(err));
  	{
  	   threads = min(MAX_THREADS,NN);
  	   it=(NN-1)/threads+1;
@@ -71,7 +72,11 @@
  	}
 
  	find_kernel<<<1,threads>>>(d_v,length,NN,it,d_res);
+//err = cudaGetLastError();
+ //	 	if (err>0) printf("\n errors FND count %d %s \n",err,cudaGetErrorString(err));
  	cudaMemcpy(&h_res, d_res, sizeof(int), cudaMemcpyDeviceToHost);
+//err = cudaGetLastError();
+// 	 	if (err>0) printf("\n errors FND copy memory %d %s \n",err,cudaGetErrorString(err));
  	return h_res;
  }
 
@@ -79,8 +84,8 @@
  {
  	// вычислить конфигурацию
  	unsigned int threads,it;
- 	int *d_res,h_res;
- 	cudaMalloc(&d_res, sizeof(int));
+ 	int static *d_res=NULL,h_res;
+ 	if (d_res==NULL) cudaMalloc(&d_res, sizeof(int));
 
  	{
  	   threads = min(MAX_THREADS,NN);
@@ -99,8 +104,8 @@
  {
  	// вычислить конфигурацию
  	unsigned int threads,it;
- 	int *d_res,h_res;
- 	cudaMalloc(&d_res, sizeof(int));
+ 	int static *d_res=NULL,h_res;
+ 	if (d_res==NULL)cudaMalloc(&d_res, sizeof(int));
 
  	{
  	   threads = min(MAX_THREADS,NN);
@@ -118,8 +123,8 @@
  {
  	// вычислить конфигурацию
  	unsigned int threads,it;
- 	int *d_res,h_res;
- 	cudaMalloc(&d_res, sizeof(int));
+ 	int static *d_res=NULL,h_res;
+ 	if (d_res==NULL) cudaMalloc(&d_res, sizeof(int));
 
  	{
  	   threads = min(MAX_THREADS,NN);
@@ -135,10 +140,11 @@
 
  bool Slice::ZERO()
   {
-  	// вычислить конфигурацию
+ /* 	// вычислить конфигурацию
   	unsigned int threads,it;
-  	int *d_res,h_res;
-  	cudaMalloc(&d_res, sizeof(int));
+  	static int *d_res=NULL;
+  	int h_res;
+  	if (d_res==NULL) cudaMalloc(&d_res, sizeof(int));
 
   	{
   	   threads = min(MAX_THREADS,NN);
@@ -146,10 +152,12 @@
   //	   printf("N=%d threads=%d,IT=%d \n",NN,threads,it);
   	}
 
-  	tail_kernel<<<1,1>>>(d_v,length,NN);
+/*  	tail_kernel<<<1,1>>>(d_v,length,NN);
   	zero_kernel<<<1,threads>>>(d_v,NN,it,d_res);
   	cudaMemcpy(&h_res, d_res, sizeof(int), cudaMemcpyDeviceToHost);
-  	return h_res==1;
+  	*/
+//  	printf("ZERO: FND %d",FND());
+  	return FND()==0;
   }
 
  void __global__ digit_kernel(unsigned long long *w, unsigned long long *dig)
@@ -159,9 +167,10 @@
  }
 
  unsigned long long int Slice::ToDigit()
- { unsigned long long *d_dig1,res=0;
+ { unsigned long long static *d_dig1;
+   unsigned long long res=0;
  	if (NN==1)
- 	{  cudaMalloc(&d_dig1,sizeof(unsigned long long));
+ 	{ if (d_dig1==NULL) cudaMalloc(&d_dig1,sizeof(unsigned long long));
  		digit_kernel<<<1,1>>>(d_v,d_dig1);
  		cudaMemcpy(&res,d_dig1,sizeof(unsigned long long),cudaMemcpyDeviceToHost);
  		res>>=(64-length);
@@ -169,10 +178,10 @@
  	return res;
  }
  void Slice::FromDigit(unsigned long long dig)
- {	 unsigned long long *d_dig1;
+ {	 unsigned long long static *d_dig1;
  		if (NN==1)
  		{   dig<<=(64-length);
- 			cudaMalloc(&d_dig1,sizeof(unsigned long long));
+ 		if (d_dig1==NULL) cudaMalloc(&d_dig1,sizeof(unsigned long long));
  			cudaMemcpy(d_dig1,&dig,sizeof(unsigned long long),cudaMemcpyHostToDevice);
  			digit_kernel<<<1,1>>>(d_dig1,d_v);
  		}
@@ -197,8 +206,9 @@
  }
 
  void Slice::print(const char *label)
- { char *d_str, *str;
- 	 cudaMalloc(&d_str,NN*SIZE_OF_LONG_INT*sizeof(char));
+ { 	 static char *d_str=NULL;
+ 	 char *str;
+ 	if (d_str==NULL)cudaMalloc(&d_str,NN*SIZE_OF_LONG_INT*sizeof(char));
  	 str=new char[NN*SIZE_OF_LONG_INT];
  	 print_kernel<<<blocks,1>>>(d_v,d_str,length,NN,IT);
  	cudaMemcpy(str,d_str,NN*SIZE_OF_LONG_INT*sizeof(char),cudaMemcpyDeviceToHost);
@@ -207,8 +217,9 @@
  }
 
  void Slice::fprint(const char *label)
-  { char *d_str, *str;
-  	 cudaMalloc(&d_str,NN*SIZE_OF_LONG_INT*sizeof(char));
+  { static char *d_str=NULL;
+	 char *str;
+	if (d_str==NULL)cudaMalloc(&d_str,NN*SIZE_OF_LONG_INT*sizeof(char));
   	 str=new char[NN*SIZE_OF_LONG_INT];
   	 print_kernel<<<blocks,1>>>(d_v,d_str,length,NN,IT);
   	cudaMemcpy(str,d_str,NN*SIZE_OF_LONG_INT*sizeof(char),cudaMemcpyDeviceToHost);
@@ -225,17 +236,17 @@
 
  void Slice::setbit(unsigned int n, int bit)
  {
-	if((n>0)&& (n<length)) setbit_kernel<<<1,1>>>(d_v,n,bit);
+	if((n>0)&& (n<=length)) setbit_kernel<<<1,1>>>(d_v,n,bit);
 	else printf("setbit: incorrect position %d \n",n);
  }
 
  int Slice::getbit(unsigned int n)
   {
-	 int *d_res,h_res;
-	 cudaMalloc(&d_res, sizeof(int));
+	 static int *d_res=NULL,h_res;
+	  if (d_res==NULL)cudaMalloc(&d_res, sizeof(int));
 
- 	 getbit_kernel<<<1,1>>>(d_v,n,d_res);
-
+	 if((n>0)&& (n<=length))getbit_kernel<<<1,1>>>(d_v,n,d_res);
+	 else printf("getbit: incorrect position %d \n",n);
  	 cudaMemcpy(&h_res, d_res, sizeof(int), cudaMemcpyDeviceToHost);
  	 return h_res;
   }

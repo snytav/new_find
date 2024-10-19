@@ -1,13 +1,13 @@
 ﻿
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-#include "device_functions.h"
+//#include "device_functions.h"
 #include <stdio.h>
 //#include "cuPrintf.cuh"
 //#include "cuPrintf.cu"
 //#include <time.h>
 #include "kernel.h"
-
+unsigned int  MAX_BLOCK=1024;
 
 //максимальная длина массива из длинных целых (для буферного массива я ядре find)
 

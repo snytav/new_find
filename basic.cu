@@ -1,11 +1,12 @@
 #include "basic.h"
 #include <stdio.h>
+#include <string.h>
 
-LongPointer d_aux_slice;
+LongPointer d_aux_slice=NULL;
 
 int InitAuxSlices(unsigned  int NN)
 {
-	cudaMalloc(&d_aux_slice,AUX_COUNT*NN*sizeof(unsigned long long int));
+	if (d_aux_slice==NULL) cudaMalloc(&d_aux_slice,AUX_COUNT*NN*sizeof(unsigned long long int));
 	cudaError_t err = cudaGetLastError();
 	return err;
 }
@@ -19,8 +20,8 @@ void MATCH(Table *tab, Slice *X, Slice *w, Slice *Z)
 //	cudaFuncSetAttribute(match_kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, NN*AUX_COUNT*sizeof(unsigned long long int));
 	match_kernel<<<blocks,1>>>(tab->get_device_pointer(),X->get_device_pointer(),w->get_device_pointer(),Z->get_device_pointer(),tab->size,NN,IT,d_aux_slice);
 	//<<<blocks,1,NN*AUX_COUNT*sizeof(unsigned long long int)>>>(tab->get_device_pointer(),X->get_device_pointer(),w->get_device_pointer(),Z->get_device_pointer(),tab->size,NN,IT);
-    cudaError_t err = cudaGetLastError();
-    if (err>0) printf("errors after MATCH %d\n",err);
+//    cudaError_t err = cudaGetLastError();
+ //   if (err>0) printf("errors after MATCH %d %s\n",err,cudaGetErrorString(err));
 }
 
 __global__ void match_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_w,LongPointer d_z,
@@ -62,7 +63,7 @@ void GEL(Table *tab, Slice *w, Slice *X, Slice *Y)
 	gel_kernel<<<blocks,1>>>(tab->get_device_pointer(),w->get_device_pointer(),X->get_device_pointer(),Y->get_device_pointer(),tab->size,NN,IT,d_aux_slice);
 
 	cudaError_t err = cudaGetLastError();
-	if (err>0) printf("errors after GEL %d\n",err);
+	if (err>0) printf("errors after GEL %d %s\n",err,cudaGetErrorString(err));
 }
 __global__ void gel_kernel(LongPointer d_tab, LongPointer d_w,LongPointer d_x,LongPointer d_y,
 		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
@@ -111,8 +112,8 @@ void LESS(Table *T, Slice *X, Slice *w,Slice *Y)
 		blocks=X->blocks;
 		less_kernel<<<blocks,1>>>(T->get_device_pointer(),X->get_device_pointer(),w->get_device_pointer(),Y->get_device_pointer(),T->size,NN,IT,d_aux_slice);
 
-		 cudaError_t err = cudaGetLastError();
-		 if (err>0) printf("errors after LESS %d\n",err);
+//		 cudaError_t err = cudaGetLastError();
+//		 if (err>0) printf("errors after LESS %d %s\n",err,cudaGetErrorString(err));
 }
 __global__ void less_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_w,LongPointer d_y,
 		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
@@ -150,8 +151,8 @@ void GREAT(Table *T, Slice *X, Slice *w,Slice *Y)
 		IT=X->IT;
 		blocks=X->blocks;
 		great_kernel<<<blocks,1>>>(T->get_device_pointer(),X->get_device_pointer(),w->get_device_pointer(),Y->get_device_pointer(),T->size,NN,IT,d_aux_slice);
-		cudaError_t err = cudaGetLastError();
-		if (err>0) printf("errors after GREAT %d\n",err);
+//		cudaError_t err = cudaGetLastError();
+//		if (err>0) printf("errors after GREAT %d %s\n",err,cudaGetErrorString(err));
 }
 __global__ void great_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_w,LongPointer d_y,
 		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
@@ -231,7 +232,7 @@ void MIN(Table *T, Slice *X, Slice*Z)
 	min_kernel<<<1,threads>>>(T->get_device_pointer(),X->get_device_pointer(),Z->get_device_pointer(),T->length,T->size,NN,IT,d_aux_slice);
 	//<<<1,threads,NN*sizeof(unsigned long long int)>>>
 	cudaError_t err = cudaGetLastError();
-	if (err>0) printf("errors after MIN %d\n",err);
+	if (err>0) printf("errors after MIN %d %s\n",err,cudaGetErrorString(err));
 }
 
 __global__ void max_kernel(LongPointer d_tab,LongPointer d_x,LongPointer d_z,
@@ -259,7 +260,7 @@ void MAX(Table *T, Slice *X, Slice*Z)
 	max_kernel<<<1,threads>>>(T->get_device_pointer(),X->get_device_pointer(),Z->get_device_pointer(),T->length,T->size,NN,IT,d_aux_slice);
 
 	cudaError_t err = cudaGetLastError();
-	    if (err>0) printf("errors after MAX %d\n",err);
+	    if (err>0) printf("errors after MAX %d %s\n",err,cudaGetErrorString(err));
 }
 
 void SETMIN(Table *T, Table *F, Slice *X, Slice *Z)
@@ -317,7 +318,7 @@ void SETMAX(Table *T, Table *F, Slice *X, Slice *Z)
 	setmax_kernel<<<blocks,1>>>(T->get_device_pointer(),F->get_device_pointer(),X->get_device_pointer(),Z->get_device_pointer(),T->size,NN,IT,d_aux_slice);
 
 	cudaError_t err = cudaGetLastError();
-	    if (err>0) printf("errors after SETMAX %d\n",err);
+	    if (err>0) printf("errors after SETMAX %d %s\n",err,cudaGetErrorString(err));
 }
 
 __global__ void setmax_kernel(LongPointer d_t, LongPointer d_f,LongPointer d_x,LongPointer d_z ,
@@ -363,7 +364,7 @@ void HIT(Table *T, Table *F, Slice *X, Slice *Z)
 	blocks=X->blocks;
 	hit_kernel<<<blocks,1>>>(T->get_device_pointer(),F->get_device_pointer(),X->get_device_pointer(),Z->get_device_pointer(),T->size,NN,IT,d_aux_slice);
 	cudaError_t err = cudaGetLastError();
-		    if (err>0) printf("errors after HIT %d\n",err);
+		    if (err>0) printf("\n errors after HIT %d %s\n",err,cudaGetErrorString(err));
 }
 __global__ void hit_kernel(LongPointer d_t, LongPointer d_f,LongPointer d_x,LongPointer d_z ,
 		unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)//<<<NN,1>>>
@@ -394,25 +395,21 @@ void ADDV(Table *T, Table *F, Slice *X, Table *S)
 	NN=X->NN;
 	IT=X->IT;
 	blocks=X->blocks;
-	Slice B(X->length);
-	addv_kernel<<<blocks,1>>>(T->get_device_pointer(),F->get_device_pointer(),X->get_device_pointer(),S->get_device_pointer(),B.get_device_pointer(),T->size,NN,IT,d_aux_slice);
-	if(B.SOME()) puts("ADDV: size error");
-	cudaError_t err = cudaGetLastError();
-			    if (err>0) printf("errors after ADDV %d\n",err);
+	addv_kernel<<<blocks,1>>>(T->get_device_pointer(),F->get_device_pointer(),X->get_device_pointer(),S->get_device_pointer(),T->size,NN,IT,d_aux_slice);
 }
-__global__ void addv_kernel(LongPointer d_t,LongPointer d_r,LongPointer d_x,LongPointer d_s,LongPointer d_b,
-				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)//<<<NN,1>>>
+__global__ void addv_kernel(LongPointer d_t,LongPointer d_r,LongPointer d_x,LongPointer d_s,
+					unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)//<<<NN,1>>>
 {
-	addv(d_t,d_r,d_x,d_s,d_b,size,NN,IT,aux_slice);
+	addv(d_t,d_r,d_x,d_s,size,NN,IT,aux_slice);
 }
 
-__device__ void addv(LongPointer d_t,LongPointer d_f,LongPointer d_x,LongPointer d_s,LongPointer d_b,
+__device__ void addv(LongPointer d_t,LongPointer d_f,LongPointer d_x,LongPointer d_s,
 				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
 	LongPointer d_y=&aux_slice[0];
 	LongPointer d_z=&aux_slice[NN];
 	LongPointer d_m=&aux_slice[2*NN];
-
+	LongPointer d_b=&aux_slice[3*NN];
 	_clr(d_m,NN,IT);
 	 for(unsigned int i=size;i>0;i--)
 	{
@@ -439,24 +436,24 @@ void ADDC(Table *T, Slice *w, Slice *X, Table *S)
 	NN=X->NN;
 	IT=X->IT;
 	blocks=X->blocks;
-	Slice B(X->length);
-	addc_kernel<<<blocks,1>>>(T->get_device_pointer(),w->get_device_pointer(),X->get_device_pointer(),S->get_device_pointer(),B.get_device_pointer(),T->size,NN,IT,d_aux_slice);
-	if(B.SOME()) puts("ADDC: size error");
-	cudaError_t err = cudaGetLastError();
-				    if (err>0) printf("errors after ADDC %d\n",err);
+//	Slice B(X->length);
+	addc_kernel<<<blocks,1>>>(T->get_device_pointer(),w->get_device_pointer(),X->get_device_pointer(),S->get_device_pointer(),T->size,NN,IT,d_aux_slice);
+//	if(B->SOME()) puts("ADDC: size error");
+//	cudaError_t err = cudaGetLastError();
+//				    if (err>0) printf("\n errors after ADDC %d %s\n",err,cudaGetErrorString(err));
 }
-__global__ void addc_kernel(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_s,LongPointer d_b,
+__global__ void addc_kernel(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_s,
 				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
-	addc(d_t,d_w,d_x,d_s,d_b,size,NN,IT,aux_slice);
+	addc(d_t,d_w,d_x,d_s,size,NN,IT,aux_slice);
 }
 
-__device__ void addc(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_s,LongPointer d_b,
+__device__ void addc(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_s,
 				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
 	LongPointer d_y=&aux_slice[0];
 	LongPointer d_m=&aux_slice[NN];
-
+	LongPointer d_b=&aux_slice[2*NN];
 	  _clr(d_b,NN,IT);
 	  for (unsigned int i=size;i>0;i--)
 	  {
@@ -485,31 +482,33 @@ void ADDC1(Table *T, Slice *w, Slice *X)
 	NN=X->NN;
 	IT=X->IT;
 	blocks=X->blocks;
-	Slice B(X->length);
+//	Slice B1(X->length);
 //	printf("addc1 \n sz=%i NN=%i lg=%i\n",T->size,NN,T->length);
-	addc1_kernel<<<blocks,1>>>(T->get_device_pointer(),w->get_device_pointer(),X->get_device_pointer(),B.get_device_pointer(),T->size,NN,IT,d_aux_slice);
-/*	if(B.SOME())
+
+		addc1_kernel<<<blocks,1>>>(T->get_device_pointer(),w->get_device_pointer(),X->get_device_pointer(),T->size,NN,IT,d_aux_slice);
+
+	/*	if(B.SOME())
 	{
 		puts("ADDC1: size error");
 //		B.print("ADDC1");
 	}
 	*/
 	cudaError_t err = cudaGetLastError();
-				    if (err>0) printf("errors after ADDC1 %d\n",err);
+				    if (err>0) printf("\n errors after ADDC1 %d %s\n",err,cudaGetErrorString(err));
 }
-__global__ void addc1_kernel(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_b,
+__global__ void addc1_kernel(LongPointer d_t,LongPointer d_w,LongPointer d_x,
 				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
-	addc1(d_t,d_w,d_x,d_b,size,NN,IT,aux_slice);
+	addc1(d_t,d_w,d_x,size,NN,IT,aux_slice);
 }
 
-__device__ void addc1(LongPointer d_t,LongPointer d_w,LongPointer d_x,LongPointer d_b,
+__device__ void addc1(LongPointer d_t,LongPointer d_w,LongPointer d_x,
 				unsigned int size,unsigned int NN, unsigned int IT,LongPointer aux_slice)
 {
 	LongPointer d_y=&aux_slice[0];
 	LongPointer d_m=&aux_slice[NN];
 	LongPointer d_col=&aux_slice[2*NN];
-
+	LongPointer d_b=&aux_slice[3*NN];
 	  _clr(d_b,NN,IT);
 	  for (unsigned int i=size;i>0;i--)
 	  {
@@ -543,9 +542,9 @@ void ADDROW(Table *T, Table *R, unsigned int i, Slice *X)
 	NN=X->NN;
 	IT=X->IT;
 	blocks=X->blocks;
-	Slice B(X->length);
+//	Slice B(X->length);
 //	printf("addc1 \n sz=%i NN=%i lg=%i\n",T->size,NN,T->length);
-	addrow_kernel<<<blocks,1>>>(T->get_device_pointer(),R->get_device_pointer(),i,X->get_device_pointer(),B.get_device_pointer(),T->size,NN,R->NN,IT,d_aux_slice);
+	addrow_kernel<<<blocks,1>>>(T->get_device_pointer(),R->get_device_pointer(),i,X->get_device_pointer(),T->size,NN,R->NN,IT,d_aux_slice);
 /*	if(B.SOME())
 	{
 		puts("ADDC1: size error");
@@ -553,21 +552,22 @@ void ADDROW(Table *T, Table *R, unsigned int i, Slice *X)
 	}
 	*/
 	cudaError_t err = cudaGetLastError();
-				    if (err>0) printf("errors after ADDC1 %d\n",err);
+				    if (err>0) printf("\n errors ADDROW i=%i %d %s \n",i,err,cudaGetErrorString(err));
 }
 
-__global__ void addrow_kernel(LongPointer d_t,LongPointer d_r,unsigned int i,LongPointer d_x,LongPointer d_b,
+__global__ void addrow_kernel(LongPointer d_t,LongPointer d_r,unsigned int i,LongPointer d_x,
 				unsigned int size,unsigned int NN,unsigned int NN2, unsigned int IT,LongPointer aux_slice)
 {
-	addrow(d_t,d_r,i,d_x,d_b,size,NN,NN2,IT,aux_slice);
+	addrow(d_t,d_r,i,d_x,size,NN,NN2,IT,aux_slice);
 }
 //d_b перенос на предыдущий разряд
-__device__ void addrow(LongPointer d_t,LongPointer d_r,unsigned int j,LongPointer d_x,LongPointer d_b,
+__device__ void addrow(LongPointer d_t,LongPointer d_r,unsigned int j,LongPointer d_x,
 		unsigned int size,unsigned int NN,unsigned int NN2, unsigned int IT,LongPointer aux_slice)
 {
 	LongPointer d_y=&aux_slice[0];
 	LongPointer d_m=&aux_slice[NN];
 	LongPointer d_col=&aux_slice[2*NN];
+	LongPointer d_b=&aux_slice[3*NN];
 	LongPointer d_col1;
 //	unsigned int vol;
 

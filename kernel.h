@@ -4,9 +4,9 @@
  *  библиотека содержит реализацию функций на устройстве
  */
 #define MAX_THREADS 1024
-#define MAX_BLOCK 1024
+//#define MAX_BLOCK 1024
 #define SIZE_OF_LONG_INT 64
-
+extern unsigned int  MAX_BLOCK;
 typedef unsigned long long int *LongPointer;
 /*
 * критичные к синхронизации,
