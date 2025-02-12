@@ -44,7 +44,6 @@ void __global__ find_kernel(LongPointer d_v, unsigned int length,unsigned int N1
     	local_1st_nonzero=min(local_1st_nonzero,tmp);
     }
     res_by_thread[n]=local_1st_nonzero;
-
    while(active_threads>1)
     {
         __syncthreads();

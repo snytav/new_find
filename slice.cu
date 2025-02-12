@@ -68,7 +68,7 @@
  	{
  	   threads = min(MAX_THREADS,NN);
  	   it=(NN-1)/threads+1;
- //	   printf("N=%d threads=%d,IT=%d \n",NN,threads,it);
+// 	   printf("FND: N=%d threads=%d,IT=%d \n",NN,threads,it);
  	}
 
  	find_kernel<<<1,threads>>>(d_v,length,NN,it,d_res);
@@ -206,14 +206,15 @@
  }
 
  void Slice::print(const char *label)
- { 	 static char *d_str=NULL;
+ { 	 //static
+	 char *d_str=NULL;
  	 char *str;
- 	if (d_str==NULL)cudaMalloc(&d_str,NN*SIZE_OF_LONG_INT*sizeof(char));
+ 	if (d_str==NULL)cudaMalloc(&d_str,(NN*SIZE_OF_LONG_INT+1)*sizeof(char));
  	 str=new char[NN*SIZE_OF_LONG_INT];
  	 print_kernel<<<blocks,1>>>(d_v,d_str,length,NN,IT);
- 	cudaMemcpy(str,d_str,NN*SIZE_OF_LONG_INT*sizeof(char),cudaMemcpyDeviceToHost);
+ 	cudaMemcpy(str,d_str,(NN*SIZE_OF_LONG_INT+1)*sizeof(char),cudaMemcpyDeviceToHost);
  	printf("%s \n%s\n",label,str);
- //	cudaFree(d_str);
+ 	cudaFree(d_str);
  }
 
  void Slice::fprint(const char *label)

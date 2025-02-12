@@ -60,26 +60,12 @@ int main()
     }
     */
 	unsigned int N1,sz,lth;
-	sz=32;
-	N1=pow(2,15); //2048;
+	sz=13;//ограничение по второй таблице
+	N1=pow(2,sz-6); //2048;
 	lth=64*N1;
-	MAX_BLOCK=64;
-/*	Table T(lth,sz);
-	Slice TMP(sz),X(lth);
-	init_stable(T);
-	for(int i=1; i<=sz;i++)
-		{
-			T.GetCol(&X,i);
-			printf(" %i",i);X.print("col");
-		}
-	for(int i=1; i<lth;i++)
-	{
-		T.GetRow(&TMP,i);
-		printf(" %i",i);TMP.print("row");
-	}
-*/
-//	while(MAX_BLOCK>31){
-    knapsack_experiment(sz,lth);
+	MAX_BLOCK=32;//1024
+    knapsack_experiment(M,lth,sz);
+   // knapsack_experiment1();
 //    MAX_BLOCK=MAX_BLOCK/32;
 //	}
 	cudaError_t err = cudaGetLastError();
