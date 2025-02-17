@@ -60,10 +60,20 @@ int main()
     }
     */
 	unsigned int N1,sz,lth;
-	sz=13;//ограничение по второй таблице
-	N1=pow(2,sz-6); //2048;
+	sz=M;//13;//ограничение по второй таблице
+/*	MAX_BLOCK=32;//1024
+	N1=4096;//pow(2,sz-6); //2048;
+*/
+	if (M<12){
+	MAX_BLOCK=pow(2,sz-6);N1=MAX_BLOCK; }
+	else
+	{
+		MAX_BLOCK=32;
+		if(M<24)
+		N1=pow(2,sz-6);
+		else N1=16384;
+	}
 	lth=64*N1;
-	MAX_BLOCK=32;//1024
     knapsack_experiment(M,lth,sz);
    // knapsack_experiment1();
 //    MAX_BLOCK=MAX_BLOCK/32;
